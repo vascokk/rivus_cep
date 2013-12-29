@@ -13,8 +13,6 @@
 		param2,
 	        ts}).
 
-
-
 compile_test()->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
     {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
@@ -23,8 +21,6 @@ compile_test()->
     ?assertEqual({ok,[{correlation1},
     		      {[{event1,eventparam}]},{[event1]},{nil},{nil}]},
     		 rivus_cep_parser:parse(Tokens)).
-    %%?assertError({error, missing_event_qualifier}, rivus_cep_parser:parse(Tokens)).
-
 
 compile_2_test() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
@@ -32,10 +28,6 @@ compile_2_test() ->
                                                          select eventparam1, eventparam2
                                                          from event1, event2; ", 1),
 
-    %?debugMsg(io_lib:format("~p~n~p",[Tokens,Endline])),
-    %debugMsg(io_lib:format("~p~n",[rivus_cep_parser:parse(Tokens)])),
-
-    %%?assertEqual({error, missing_event_qualifier}, rivus_cep_parser:parse(Tokens)).
     ?assertError({error, missing_event_qualifier}, rivus_cep_parser:parse(Tokens)).
 
 compile_3_test() ->
@@ -46,8 +38,6 @@ compile_3_test() ->
                                                          where eventparam1 = 20
                                                          within 60 seconds; ", 1),
 
-    %?debugMsg(io_lib:format("~p~n~p",[Tokens,Endline])),
-    %?debugMsg(io_lib:format("~p~n",[rivus_cep_parser:parse(Tokens)])),
     ?assertEqual({ok,[{correlation1},
 		      {[{event1,eventparam1}]},
 		      {[event1]},
@@ -64,9 +54,6 @@ compile_4_test() ->
                                                          from event1 as ev1, event2 as ev2
                                                          where ev1.eventparam1 = ev2.eventparam2 and ev1.eventparam1 > ev2.eventparam2
                                                          within 60 seconds; ", 1),
-
-    %% ?debugMsg(io_lib:format("~p~n~p",[Tokens,Endline])),
-    %% ?debugMsg(io_lib:format("~p~n",[rivus_cep_parser:parse(Tokens)])),
     ?assertEqual({ok,[{correlation1},
 		      {[{event1,eventparam1},
 			{event2,eventparam2},
@@ -90,8 +77,6 @@ compile_5_test() ->
                and  ev1.eventparam1 > ev2.eventparam2
         within 60 seconds; ", 1),
 
-    %% ?debugMsg(io_lib:format("~p~n~p",[Tokens,Endline])),
-    %% ?debugMsg(io_lib:format("~p~n",[rivus_cep_parser:parse(Tokens)])),
     ?assertEqual({ok,[{correlation1},
 		      {[{event1,eventparam1},
 			{event2,eventparam2},
@@ -120,8 +105,6 @@ compile_6_test() ->
                and  ev1.eventparam1 > ev2.eventparam2
         within 60 seconds; ", 1),
 
-    %% ?debugMsg(io_lib:format("~p~n~p",[Tokens,Endline])),
-    %% ?debugMsg(io_lib:format("~p~n",[rivus_cep_parser:parse(Tokens)])).
     ?assertEqual({ok,[{correlation1},
 		      {[{event1,eventparam1},
 			{sum,{event2,eventparam2}},
@@ -191,9 +174,6 @@ template_1_test() ->
     %% send some events
     Partition = blabla,
 
-    %% gproc:start_link(),
-    %% lager:start(),
-    %% folsom:start(),
     application:start(gproc),
     application:start(lager),
     application:start(folsom),
@@ -205,18 +185,14 @@ template_1_test() ->
     Event3 = {event1, 20,b,c},
     Event4 = {event2, 30,b,cc,d},
     Event5 = {event2, 40,bb,cc,dd},
-    %% gproc:send({p, l, {Partition, event1}}, {event1, Event1}),
+   
     gproc:send({p, l, {Partition, element(1, Event1)}}, {element(1, Event1), Event1}),
     gproc:send({p, l, {Partition, element(1, Event2)}}, {element(1, Event2), Event2}),
     gproc:send({p, l, {Partition, element(1, Event3)}}, {element(1, Event3), Event3}),
     gproc:send({p, l, {Partition, element(1, Event4)}}, {element(1, Event4), Event4}),
     gproc:send({p, l, {Partition, element(1, Event5)}}, {element(1, Event5), Event5}),
     Pids = gproc:lookup_pids({p, l, get_result}),
-    %% ?debugMsg(io_lib:format("Pid: ~p~n",[Pids])),
-    %% ?debugMsg(io_lib:format("gproc registered for event1: ~p~n",[gproc:lookup_pids({p,l,{Partition, event1}})])),
-    %% ?debugMsg(io_lib:format("gproc registered for event2: ~p~n",[gproc:lookup_pids({p,l,{Partition, event2}})])),
-  
-    %%timer:sleep(2000),
+
     {ok,Values} = gen_server:call(hd(Pids), get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     ?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
@@ -279,9 +255,6 @@ template_2_test() ->
     %% send some events
     Partition = blabla,
 
-    %% gproc:start_link(),
-    %% lager:start(),
-    %% folsom:start(),
     application:start(gproc),
     application:start(lager),
     application:start(folsom),
@@ -294,7 +267,7 @@ template_2_test() ->
     Event4 = {event2, 30,b,40,d},
     Event5 = {event2, 40,bb,50,dd},
     Event6 = {event2, 50,b,40,d},
-    %% gproc:send({p, l, {Partition, event1}}, {event1, Event1}),
+
     gproc:send({p, l, {Partition, element(1, Event1)}}, {element(1, Event1), Event1}),
     gproc:send({p, l, {Partition, element(1, Event2)}}, {element(1, Event2), Event2}),
     gproc:send({p, l, {Partition, element(1, Event3)}}, {element(1, Event3), Event3}),
@@ -302,10 +275,7 @@ template_2_test() ->
     gproc:send({p, l, {Partition, element(1, Event5)}}, {element(1, Event5), Event5}),
     gproc:send({p, l, {Partition, element(1, Event6)}}, {element(1, Event6), Event6}),
     Pids = gproc:lookup_pids({p, l, get_result}),
-    %% ?debugMsg(io_lib:format("Pid: ~p~n",[Pids])),
-    %% ?debugMsg(io_lib:format("gproc registered for event1: ~p~n",[gproc:lookup_pids({p,l,{Partition, event1}})])),
-    %% ?debugMsg(io_lib:format("gproc registered for event2: ~p~n",[gproc:lookup_pids({p,l,{Partition, event2}})])),
-  
+
     %%timer:sleep(2000),
     {ok,Values} = gen_server:call(hd(Pids), get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),

@@ -58,9 +58,6 @@ select_2() ->
      rivus_cep_window:update(select, <<"blabla2">>),
      rivus_cep_window:update(select, <<"blabla3">>),
      ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:select(select, "blah")).
-     %% timer:sleep(4000),
-     %% [?_assertEqual([],rivus_cep_window:get_values(testevent_slide))].
-
 
 select() ->
      rivus_cep_window:new(w_select, slide, 2),

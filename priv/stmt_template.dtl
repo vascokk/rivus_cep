@@ -8,15 +8,7 @@
 -compile({parse_transform,ms_transform}).
 -compile({parse_transform,qlc}).
 
--include_lib("eunit/include/eunit.hrl").
--include_lib("stdlib/include/ms_transform.hrl").
--include_lib("stdlib/include/qlc.hrl").
-
--include("rivus_cep.hrl").
-
-
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, code_change/3, terminate/2]).
-
 -export([start_link/1, reset/1, get_result/1, update/1]).
 
 -record(state,{
@@ -26,16 +18,7 @@
 	  output = []
 }).
 
-update(Event) ->
-    Event. %%TODO (not needed)
-
-create_match_spec(Event, Oldest) ->
-    ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==Event  -> Value end).
-    
-    
-create_from_qh(MatchSpec, Reservoir) ->
-     ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).
-
+%%% API functions
 
 start_link(Partition) ->
     gen_server:start_link( {{stmtName}}, [Partition, #state{}], []).
@@ -59,18 +42,32 @@ get_result(Owner) ->
     gen_server:call(Owner, get_result).
 
 
+%% Internal functions
+update(Event) ->
+    Event. %%TODO (not needed)
+
+create_match_spec(Event, Oldest) ->
+    ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==Event  -> Value end).
+    
+    
+create_from_qh(MatchSpec, Reservoir) ->
+     ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).
+
+%% gen_server functions
+
+
 handle_call(get_result, From, State) ->
 
     {{resultsetStmt}}
  
-    %%ResultSet = lists:foldl(fun(X, Acc) -> sets:add_element(X,Acc) end, sets:new(),  qlc:e(QH)),
     ResultSet = qlc:e(QH),    
     lager:info("---> Result Set: ~p", [ResultSet]),
 
     FirstRec = hd(ResultSet),
     Key = rivus_cep_aggregation:get_group_key(FirstRec),
+    
     Result = case length(tuple_to_list(FirstRec)) == length(tuple_to_list(Key)) of
-	      true -> ResultSet;
+	      true -> ResultSet; %% no aggregations in the 'select' stmt
 	      false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
 	  end,
 	   
@@ -90,7 +87,7 @@ handle_info({ {{ eventName }} , Event}, #state{owner = Partition} = State) ->
     {noreply, State};    
 {% endfor %}
 handle_info(Info, State) ->
-    lager:info("Statement: ~p,  handle_info got event: ~p. Will do nothing with it! !!!",[ {{stmtName}} ,Info]),
+    lager:info("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ {{stmtName}} ,Info]),
     {noreply, State}.
 
 terminate(Reason, State) ->
