@@ -14,7 +14,7 @@ where
 within 60 seconds
 ```
 
-For each continuous query statement, similar to the above, a gen\_server or gen\_event \(in case of "pattern matching" query\) module will be created, using an [ErlyDTL](https://github.com/erlydtl/erlydtl) template. 
+For each continuous query statement, similar to the above, a gen\_server or gen\_fsm \(in case of "pattern matching" query\) module will be created, using an [ErlyDTL](https://github.com/erlydtl/erlydtl) template. 
 
 Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries, which are embedded in the template.
 
