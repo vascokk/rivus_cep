@@ -1,6 +1,6 @@
 %% ; -*- mode: Erlang;-*-
 
-Header "%% Copyright (C)" "%% @Vasco Kolarov".
+Header "%% Copyright (C)" "%% @Vasil Kolarov".
 
 Nonterminals declaration select_clause from_clause where_clause within_clause name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function. 
 
