@@ -21,7 +21,7 @@ select
     ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev2.eventparam4
 from 
     event1 as ev1 -> event2 as ev2
-where 
+where
     ev1.eventparam2 = ev2.eventparam2
 within 60 seconds
 ```
@@ -40,7 +40,7 @@ See the unit tests for details how to use the library. There are several DSL exa
 
 ###Current limitations
 
-The project is in its infancy, so there are a number of limitations:
+The project is in its infancy, so there is a number of limitations:
 
 - avg() aggregation is yet to be implemented;
 - using event aliases is mandatory;
