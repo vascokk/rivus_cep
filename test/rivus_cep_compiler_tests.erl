@@ -167,7 +167,7 @@ template_1() ->
                                                          where ev1.eventparam2 = ev2.eventparam2
                                                          within 60 seconds; ", 1),
 
-    TemplateVars = rivus_cep_parser:parse(Tokens),
+    StmtClauses = rivus_cep_parser:parse(Tokens),
     ?assertEqual({ok,[{correlation1},
 		      {[{event1,eventparam1},
 			{event2,eventparam2},
@@ -175,9 +175,9 @@ template_1() ->
 			{event1,eventparam2}]},
 		      {[event1,event2]},
 		      {{eq,{event1,eventparam2},{event2,eventparam2}}},
-		      {60}]}, TemplateVars ),
+		      {60}]}, StmtClauses ),
 
-    {ok, [StmtName, SelectClause, FromClause, WhereClause, WithinClause]} = TemplateVars,
+    {ok, [StmtName, SelectClause, FromClause, WhereClause, WithinClause]} = StmtClauses,
     
     Stmt = rivus_cep_stmt_builder:build_rs_stmt(StmtName, SelectClause, FromClause, WhereClause),
     %% ?debugMsg(io_lib:format("Stmt: ~p~n",[Stmt])),
@@ -247,21 +247,19 @@ template_2() ->
                                                          where ev1.eventparam2 = ev2.eventparam2
                                                          within 60 seconds; ", 1),
 
-    TemplateVars = rivus_cep_parser:parse(Tokens),
+    StmtClauses = rivus_cep_parser:parse(Tokens),
     ?assertEqual({ok,[{correlation2},
 		      {[{event1,eventparam1},
 			{event2,eventparam2},
 			{sum,{event2,eventparam3}}]},
 		      {[event1,event2]},
 		      {{eq,{event1,eventparam2},{event2,eventparam2}}},
-		      {60}]}, TemplateVars ),
+		      {60}]}, StmtClauses ),
 
-    {ok, [StmtName, SelectClause, FromClause, WhereClause, WithinClause]} = TemplateVars,
+    {ok, [StmtName, SelectClause, FromClause, WhereClause, WithinClause]} = StmtClauses,
     
     Stmt = rivus_cep_stmt_builder:build_rs_stmt(StmtName, SelectClause, FromClause, WhereClause),
     %% ?debugMsg(io_lib:format("Stmt: ~p~n",[Stmt])),
-
-%% {(element(1,E1)):get_param_by_name(E1,eventparam1),(element(1,E2)):get_param_by_name(E2,eventparam2),{sum, {(element(1,E2)):get_param_by_name(E2,eventparam3)}}},
     
     erlydtl:compile("../priv/stmt_template.dtl", stmt_template),
     {ok, Templ} = stmt_template:render([
@@ -326,7 +324,7 @@ pattern() ->
                                                          where ev1.eventparam2 = ev2.eventparam2
                                                          within 60 seconds; ", 1),
 
-    TemplateVars = rivus_cep_parser:parse(Tokens),
+    StmtClauses = rivus_cep_parser:parse(Tokens),
     ?assertEqual({ok,[{pattern1},
 		      {[{event1,eventparam1},
 			{event2,eventparam2},
@@ -334,9 +332,9 @@ pattern() ->
 			{event2,eventparam4}]},
 		      {pattern, {[event1,event2]}},
 		      {{eq,{event1,eventparam2},{event2,eventparam2}}},
-		      {60}]}, TemplateVars ),
+		      {60}]}, StmtClauses ),
 
-    {ok, [StmtName, SelectClause, FromClause, WhereClause, WithinClause]} = TemplateVars,
+    {ok, [StmtName, SelectClause, FromClause, WhereClause, WithinClause]} = StmtClauses,
 
     {IsPattern, _FromClause} = case FromClause of
 				   {pattern, Events} -> {true, Events};
