@@ -41,7 +41,7 @@ init([Owner, StateData]) ->
        gproc:reg({p, l, {Owner, {{eventName}} } }),
     {% endfor %}
     gproc:reg({p, l, get_result}),
-    lager:debug("Starting: {{stmtName}}, Owner: ~p, PID: ~p ",[Owner, self()]),
+    lager:debug("~nStarting: {{stmtName}}, Owner: ~p, PID: ~p ~n",[Owner, self()]),
     new_window(),  
     %%gen_fsm:start_timer(StateData#state_data.timeout, new_time_window),  
     {ok, {{ eventList|first }} , #state_data{owner = Owner}}.

@@ -1,7 +1,6 @@
--module(test_server).
+-module(result_subscriber).
 
 -compile([debug_info, export_all]).
--compile([{parse_transform, lager_transform}]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -18,13 +17,14 @@ handle_call(stop, From, State) ->
 handle_call(get_result, From, State) ->
     {reply, {ok, State}, State}.
 
-handle_info(timeout,State) -> {stop,normal,State};
+handle_info(timeout,State) ->
+    {stop,normal,State};
 
 handle_info(_Info, State) ->
-    ?debugMsg(io_lib:format("Info ~p~n",[_Info])),
+    ?debugMsg(io_lib:format("Info: ~p~n",[_Info])),
     {noreply, _Info, 50000}.
 
 terminate(_Reason, _State) ->
-    ?debugMsg(io_lib:format("reason ~p~n",[_Reason])),
+    ?debugMsg(io_lib:format("Reason: ~p~n",[_Reason])),
     ok.
 

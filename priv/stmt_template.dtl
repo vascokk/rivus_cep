@@ -45,7 +45,7 @@ init([Owner, StateData]) ->
        gproc:reg({p, l, {Owner, {{eventName}} } }),
     {% endfor %}
     gproc:reg({p, l, get_result}),
-    lager:debug("Starting: {{stmtName}}, Owner:~p, PID: ~p ",[Owner, self()]),
+    lager:debug("~nStarting: {{stmtName}}, Owner:~p, PID: ~p ~n",[Owner, self()]),
     {ok, #state_data{owner = Owner}}.
 
 reset(Owner) ->

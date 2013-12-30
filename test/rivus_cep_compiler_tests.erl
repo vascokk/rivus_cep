@@ -153,9 +153,9 @@ template_test_() ->
 
      [{"Test template with query without aggregations",
        fun template_1/0},
-      {"Test template with query with aggregations",
+      {"Test template with aggregation query",
        fun template_2/0},
-      {"Tes event patterns",
+      {"Tes query on event sequence (event pattern matching)",
        fun pattern/0}]
     }.
 
@@ -212,7 +212,7 @@ template_1() ->
     
     lager:set_loglevel(lager_console_backend, debug),
     
-    {ok,Pid} = test_server:start_link(),
+    {ok,Pid} = result_subscriber:start_link(),
 
     
     ModName:start_link(Pid),
@@ -293,7 +293,7 @@ template_2() ->
 
     lager:set_loglevel(lager_console_backend, debug),
     
-    {ok,Pid} = test_server:start_link(),
+    {Res, Pid} = result_subscriber:start_link(),
     
     ModName:start_link(Pid),
     
@@ -376,7 +376,7 @@ pattern() ->
 
     lager:set_loglevel(lager_console_backend, debug),
     
-    {Res, Pid} = test_server:start_link(),
+    {Res, Pid} = result_subscriber:start_link(),
     
     ModName:start_link(Pid),
 
