@@ -1,4 +1,5 @@
 -module(event1).
+-behaviour(event_behaviour).
 -export([get_param_by_name/2]).
 
 get_param_by_name(Event, ParamName) ->
