@@ -13,7 +13,7 @@
 		param2,
 	        ts}).
 
-compile_test()->
+parse_query_1_test()->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
     {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select eventparam
@@ -22,7 +22,7 @@ compile_test()->
     		      {[{event1,eventparam}]},{[event1]},{nil},{nil}]},
     		 rivus_cep_parser:parse(Tokens)).
 
-compile_2_test() ->
+parse_query_2_test() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
     {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select eventparam1, eventparam2
@@ -30,7 +30,7 @@ compile_2_test() ->
 
     ?assertError({error, missing_event_qualifier}, rivus_cep_parser:parse(Tokens)).
 
-compile_3_test() ->
+parse_query_3_test() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
         {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select eventparam1
@@ -47,7 +47,7 @@ compile_3_test() ->
     
 
 
-compile_4_test() ->
+parse_query_4_test() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
         {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
@@ -65,7 +65,7 @@ compile_4_test() ->
 		      {60}]},
 		 rivus_cep_parser:parse(Tokens)).
 
-compile_5_test() ->
+parse_query_5_test() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
         {ok, Tokens, Endline} = rivus_cep_scanner:string(
 	   "define correlation1 as
@@ -93,7 +93,7 @@ compile_5_test() ->
 			 {gt,{event1,eventparam1},{event2,eventparam2}}}}},
 		      {60}]},
 		 rivus_cep_parser:parse(Tokens)).
-compile_6_test() ->
+parse_query_6_test() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
         {ok, Tokens, Endline} = rivus_cep_scanner:string(
 	   "define correlation1 as
@@ -122,7 +122,7 @@ compile_6_test() ->
 		      {60}]},
 		 rivus_cep_parser:parse(Tokens)).
 
-compile_pattern_test() ->
+parse_pattern_test() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
         {ok, Tokens, Endline} = rivus_cep_scanner:string("define pattern1 as
                                                          select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
@@ -140,7 +140,7 @@ compile_pattern_test() ->
 		      {60}]},
 		 rivus_cep_parser:parse(Tokens)).
 
-template_test_() ->
+template_module_test_() ->
     {setup,
      fun () -> folsom:start(),
 	       lager:start(),
@@ -152,14 +152,14 @@ template_test_() ->
      end,
 
      [{"Test template with query without aggregations",
-       fun template_1/0},
+       fun query_1/0},
       {"Test template with aggregation query",
-       fun template_2/0},
+       fun query_2/0},
       {"Tes query on event sequence (event pattern matching)",
        fun pattern/0}]
     }.
 
-template_1() ->
+query_1() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
         {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
@@ -239,7 +239,7 @@ template_1() ->
 
 
 
-template_2() ->
+query_2() ->
     rivus_cep_compiler:compile("../src/rivus_cep_scanner.xrl","../src/rivus_cep_parser.yrl"),
         {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation2 as
                                                          select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
