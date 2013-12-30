@@ -156,7 +156,9 @@ template_module_test_() ->
       {"Test template with aggregation query",
        fun query_2/0},
       {"Tes query on event sequence (event pattern matching)",
-       fun pattern/0}]
+       fun pattern/0},
+      {"Test load_query(Query, Subscriber)",
+       fun load_query/0}]
     }.
 
 query_1() ->
@@ -397,5 +399,39 @@ pattern() ->
     ?assertEqual([{20,b,cc,d}], Values),
     gen_server:call(Pid,stop).
 
+
+load_query()->
+    {Res, Pid} = result_subscriber:start_link(),
+    
+    QueryStr = "define pattern2 as
+                    select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev2.eventparam4
+                    from event1 as ev1 -> event2 as ev2
+                    where ev1.eventparam2 = ev2.eventparam2
+                    within 60 seconds; ",
+
+    rivus_cep_compiler:load_query(QueryStr, Pid),
+    
+    %% send some events
+
+    lager:set_loglevel(lager_console_backend, debug),
+    
+    Event1 = {event1, 10,b,c}, 
+    Event2 = {event1, 15,bbb,c},
+    Event3 = {event1, 20,b,c},
+    Event4 = {event2, 30,b,cc,d},
+    Event5 = {event2, 40,bb,cc,dd},
+   
+    gproc:send({p, l, {Pid, element(1, Event1)}}, {element(1, Event1), Event1}),
+    gproc:send({p, l, {Pid, element(1, Event2)}}, {element(1, Event2), Event2}),
+    gproc:send({p, l, {Pid, element(1, Event3)}}, {element(1, Event3), Event3}),
+    gproc:send({p, l, {Pid, element(1, Event4)}}, {element(1, Event4), Event4}),
+    gproc:send({p, l, {Pid, element(1, Event5)}}, {element(1, Event5), Event5}),
+
+    timer:sleep(2000),       
+    
+    {ok,Values} = gen_server:call(Pid, get_result),
+    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    ?assertEqual([{20,b,cc,d}], Values),
+    gen_server:call(Pid,stop).    
 
 
