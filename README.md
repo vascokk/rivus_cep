@@ -1,3 +1,5 @@
+https://travis-ci.org/vascokk/rivus_cep.png
+
 #Rivus CEP
 
 Rivus CEP is an Erlang library for complex event processing. It uses a declarative SQL-like DSL for processing the events.
