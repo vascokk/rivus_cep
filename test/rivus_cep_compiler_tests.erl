@@ -185,7 +185,7 @@ query_1() ->
     erlydtl:compile("../priv/stmt_template.dtl", stmt_template),
     {ok, Templ} = stmt_template:render([
 					{stmtName, list_to_binary(atom_to_list(element(1,StmtName)))},
-					{timeout, list_to_binary("60")},
+					{timeout, element(1,WithinClause)},
 					{resultsetStmt, list_to_binary(Stmt)},
 					{eventList, element(1,FromClause)}
 				       ]),
@@ -264,7 +264,7 @@ query_2() ->
     erlydtl:compile("../priv/stmt_template.dtl", stmt_template),
     {ok, Templ} = stmt_template:render([
 					{stmtName, list_to_binary(atom_to_list(element(1,StmtName)))},
-					{timeout, list_to_binary("60")},
+					{timeout, element(1,WithinClause)},
 					{resultsetStmt, list_to_binary(Stmt)},
 					{eventList, element(1,FromClause)}
 				       ]),
@@ -347,7 +347,7 @@ pattern() ->
     erlydtl:compile("../priv/pattern_stmt_template.dtl", stmt_template,[{custom_filters_modules,[erlydtl_custom_filters]}]),
     {ok, Templ} = stmt_template:render([
 					{stmtName, list_to_binary(atom_to_list(element(1,StmtName)))},
-					{timeout, list_to_binary("60")},
+					{timeout, element(1,WithinClause)},
 					{resultsetStmt, list_to_binary(Stmt)},
 					{eventList, element(1, _FromClause)}
 				       ]),
