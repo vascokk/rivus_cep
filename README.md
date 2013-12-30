@@ -38,6 +38,12 @@ For each event type there must be a module implementing the 'event' behavior wit
 
 See the unit tests for details how to use the library. There are several DSL examples too.
 
+###Dependencies
+
+- [ErlyDTL](https://github.com/erlydtl/erlydtl)
+- [gproc](https://github.com/uwiger/gproc)
+- [folsom](https://github.com/boundary/folsom)
+
 ###Current limitations
 
 The project is in its infancy, so there is a number of limitations:
