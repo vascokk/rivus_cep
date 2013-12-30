@@ -33,7 +33,7 @@ build_rs_stmt(StmtName, Select, From, Where) ->
 
 build_within_clause({StmtName}) ->
     "{Reservoir, Oldest} = rivus_cep_window:get_window( " ++ atom_to_list(StmtName) ++ " ),
-     MatchSpecs = [create_match_spec(Event, Oldest) || Event<- State#state.events]".
+     MatchSpecs = [create_match_spec(Event, Oldest) || Event<- StateData#state_data.events]".
 
 build_where_clause(Where) ->
     where_eval(Where).

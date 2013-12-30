@@ -26,7 +26,7 @@
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, code_change/3, terminate/2]).
 -export([start_link/1, reset/1, get_result/1, update/1]).
 
--record(state,{
+-record(state_data,{
 	  owner,
 	  events = [ {{ eventList|join:", " }} ] ,
 	  timeout = {{ timeout }},
@@ -35,18 +35,18 @@
 
 %%% API functions
 
-start_link(Partition) ->
-    gen_server:start_link( {{stmtName}}, [Partition, #state{}], []).
+start_link(Owner) ->
+    gen_server:start_link( {{stmtName}}, [Owner, #state_data{}], []).
 
-init([Partition, State]) ->
+init([Owner, StateData]) ->
     rivus_cep_window:new( {{stmtName}}, slide, {{timeout}} ),
-   %% [ gproc:reg({p, l, {Partition, Event }}) || Event <- State#state.events],
+   %% [ gproc:reg({p, l, {Owner, Event }}) || Event <- StateData#state_data.events],
     {% for eventName in eventList %}
-       gproc:reg({p, l, {Partition, {{eventName}} } }),
+       gproc:reg({p, l, {Owner, {{eventName}} } }),
     {% endfor %}
     gproc:reg({p, l, get_result}),
-    lager:info("Starting: {{stmtName}}, Partition:~p, PID: ~p ",[Partition, self()]),
-    {ok, #state{owner = Partition}}.
+    lager:debug("Starting: {{stmtName}}, Owner:~p, PID: ~p ",[Owner, self()]),
+    {ok, #state_data{owner = Owner}}.
 
 reset(Owner) ->
     gen_server:call(Owner, reset).
@@ -71,42 +71,50 @@ create_from_qh(MatchSpec, Reservoir) ->
 %% gen_server functions
 
 
-handle_call(get_result, From, State) ->
-
+%%handle_call(get_result, From, StateData) ->
+send_result(StateData) ->
     {{resultsetStmt}}
  
     ResultSet = qlc:e(QH),    
-    lager:info("---> Result Set: ~p", [ResultSet]),
+    lager:debug("---> Result Set: ~p", [ResultSet]),
+    case ResultSet of
+	[] -> nil;
+	_ -> begin
+		 FirstRec = hd(ResultSet),
+		 Key = rivus_cep_aggregation:get_group_key(FirstRec),
+		 
+		 Result = case length(tuple_to_list(FirstRec)) == length(tuple_to_list(Key)) of
+			      true -> ResultSet; %% no aggregations in the 'select' stmt
+			      false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
+			  end,
+		 lager:debug("---> Result: ~p <-----", [Result]),
+		 gproc:send({p, l, {StateData#state_data.owner, result_subscribers}}, Result)
+	     end
+    end.
+%% {reply, {ok, Result}, StateData};
 
-    FirstRec = hd(ResultSet),
-    Key = rivus_cep_aggregation:get_group_key(FirstRec),
-    
-    Result = case length(tuple_to_list(FirstRec)) == length(tuple_to_list(Key)) of
-	      true -> ResultSet; %% no aggregations in the 'select' stmt
-	      false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
-	  end,
-	   
-    {reply, {ok, Result}, State};  
-handle_call(Request, From, State) ->
+	
+handle_call(Request, From, StateData) ->
     Reply = {ok, notsupported} ,
-    {reply, Reply, State}.
+    {reply, Reply, StateData}.
 
-handle_cast(Msg, State) ->
-    {noreply, State}.
+handle_cast(Msg, StateData) ->
+    {noreply, StateData}.
 
 
 {% for eventName in eventList %}
-handle_info({ {{ eventName }} , Event}, #state{owner = Partition} = State) ->
-    lager:info("handle_info Event: ~p",[Event]),
+handle_info({ {{ eventName }} , Event}, #state_data{owner = Owner} = StateData) ->
+    lager:debug("handle_info Event: ~p",[Event]),
     rivus_cep_window:update( {{stmtName}}, Event),
-    {noreply, State};    
+    send_result(StateData),
+    {noreply, StateData};    
 {% endfor %}
-handle_info(Info, State) ->
-    lager:info("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ {{stmtName}} ,Info]),
-    {noreply, State}.
+handle_info(Info, StateData) ->
+    lager:debug("StateDatament: ~p,  handle_info got event: ~p. Will do nothing ...",[ {{stmtName}} ,Info]),
+    {noreply, StateData}.
 
-terminate(Reason, State) ->
+terminate(Reason, StateData) ->
     ok.
 
-code_change(OldVsn, State, Extra) ->
-    {ok, State}.
+code_change(OldVsn, StateData, Extra) ->
+    {ok, StateData}.

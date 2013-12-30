@@ -41,6 +41,7 @@ Rules.
 >=		:	{token,{'>=',TokenLine}}.
 =<		:	{token,{'<=',TokenLine}}.
 <>		:	{token,{'<>',TokenLine}}.
+->		:	{token,{'->',TokenLine}}.
 
 []()[}{|!?/;:,.*+#<>=-] :
 			{token,{list_to_atom(TokenChars),TokenLine}}.

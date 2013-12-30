@@ -22,30 +22,19 @@
 -include_lib("../deps/folsom/include/folsom.hrl").
 -include("rivus_cep.hrl").
 
-eval_resultset(Stmt, [H|T], #res_eval_state{recno = RecNo, res_keys = ResKeys} = State) ->
+eval_resultset(Stmt, [H|T], #res_eval_state{recno = RecNo, result = CurrentRes} = State) ->
     Key = get_group_key(H),
-    ResultRecord = eval_result_record(Stmt, H, Key, State),
-    NewResKeys = case dict:is_key(Key, ResKeys) of
-		  false -> folsom_metrics:new_gauge(Key),
-			   dict:store(Key, true, ResKeys);
-		  true -> ResKeys
-	      end,
-
-    folsom_metrics_gauge:update(Key, ResultRecord),
-    eval_resultset(Stmt, T, State#res_eval_state{recno=RecNo+1, res_keys = NewResKeys});
-eval_resultset(Stmt, [], State) ->
-    Res = [folsom_metrics_gauge:get_value(Key) || Key <- dict:fetch_keys(State#res_eval_state.res_keys)],
-    [folsom_metrics:delete_metric(Key) || Key <- dict:fetch_keys(State#res_eval_state.res_keys)],
-    [folsom_metrics:delete_metric(Key) || Key <- orddict:fetch_keys(State#res_eval_state.aggr_keys)],
-    Res.
-
-
+    {ResultRecord, NewState} = eval_result_record(Stmt, H, Key, State#res_eval_state{aggrno = 1}),
+    NewRes = dict:store(Key, ResultRecord, CurrentRes),
+    eval_resultset(Stmt, T, NewState#res_eval_state{recno=RecNo+1, result = NewRes});
+eval_resultset(_, [], State) ->
+    [Value || {_, Value} <- dict:to_list(State#res_eval_state.result)].
 
 eval_result_record(Stmt, ResultRecord, Key, _State) ->
     Nodes = tuple_to_list(ResultRecord),
     %%?debugMsg(io_lib:format("Nodes: ~p~n",[Nodes])),
-    {Res, _} = lists:mapfoldl(fun(Node, State) -> eval_node(Stmt, Node, Key, State) end, _State, Nodes),
-    list_to_tuple(Res).
+    {ResNodes, NewState} = lists:mapfoldl(fun(Node, State) -> eval_node(Stmt, Node, Key, State) end, _State, Nodes),
+    {list_to_tuple(ResNodes), NewState}.
 
 	    
 eval_node(Stmt, Node, Key, State) ->
@@ -60,20 +49,26 @@ eval_node(Stmt, Node, Key, State) ->
 			 eval_aggregation(Aggr, Stmt, Value, Key, NewState)
     end.
 
-eval_aggregation(sum, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_keys = Dict} = State) ->
-    NewDict = case orddict:is_key({Stmt, Key, AggrNo}, Dict) of
-		  false -> folsom_metrics:new_counter({Stmt, Key, AggrNo}),
-			   orddict:store({Stmt, Key, AggrNo}, true, Dict);
-		  true -> Dict
-	      end,		 
-    {folsom_metrics_counter:inc({Stmt, Key, AggrNo}, Value), State#res_eval_state{aggrno = AggrNo+1, aggr_keys = NewDict}};
-eval_aggregation(count, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_keys = Dict} = State) ->
-    NewDict = case orddict:is_key({Stmt,Key,AggrNo}, Dict) of
-		  false -> folsom_metrics:new_counter({Stmt,Key, AggrNo}),
-			   orddict:store({Stmt,Key,AggrNo}, true, Dict);
-		  true -> Dict
-	      end,		 
-    {folsom_metrics_counter:inc({Stmt,Key, AggrNo}, 1), State#res_eval_state{aggrno = AggrNo+1, aggr_keys = NewDict}}.
+eval_aggregation(sum, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = AggrNodes} = State) ->
+    NewAggrNodes = orddict:update_counter({Stmt, Key, AggrNo}, Value,  AggrNodes),
+    {orddict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}};
+eval_aggregation(count, Stmt, _, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = Aggregations} = State) ->
+    NewAggr = orddict:update_counter({Stmt, Key, AggrNo}, 1,  Aggregations),
+    {orddict:fetch({Stmt, Key, AggrNo}, NewAggr),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggr}};
+eval_aggregation(min, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = AggrNodes} = State) ->
+    NewAggrNodes = orddict:update({Stmt, Key, AggrNo}, fun(Old) -> case Old < Value of
+								       true -> Old;
+								       false -> Value
+								   end
+						       end, Value,  AggrNodes),
+    {orddict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}};
+eval_aggregation(max, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = AggrNodes} = State) ->
+    NewAggrNodes = orddict:update({Stmt, Key, AggrNo}, fun(Old) -> case Old > Value of
+								       true -> Old;
+								       false -> Value
+								   end
+						       end, Value,  AggrNodes),
+    {orddict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}}.
 
 eval_operation(plus, Left, Right) ->	    
     Left + Right;

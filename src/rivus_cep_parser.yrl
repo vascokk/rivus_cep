@@ -1,10 +1,10 @@
 %% ; -*- mode: Erlang;-*-
 
-Header "%% Copyright (C)" "%% @Vasil Kolarov".
+Header "%% Copyright (c)" "%% @Vasil Kolarov".
 
-Nonterminals declaration select_clause from_clause where_clause within_clause name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function. 
+Nonterminals declaration select_clause from_clause pattern where_clause within_clause name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function. 
 
-Terminals define as select from where within seconds and or not if foreach '(' ')' '+' '-' '*' '/' '<' '>' '=' '<=' '>=' '<>' ',' atom integer float index of '.' var string char count sum min max avg.
+Terminals define as select from where within seconds and or not if foreach '(' ')' '+' '-' '*' '/' '<' '>' '=' '<=' '>=' '<>' ',' '->' atom integer float index of '.' var string char count sum min max avg.
 
 Rootsymbol declaration.
 
@@ -26,9 +26,6 @@ Unary 1300 uminus.
 
 uminus -> '-' expression.
 
-
-%%declaration -> correlation_declaration:'$1'.
-%% get_ast({Name, SelectClause, FromClause, WhereClause, WithinClause}) ->
 declaration -> define 
 		   name_clause  as
 		   select
@@ -62,10 +59,15 @@ name_clause -> atom: value_of('$1').
 select_clause -> expression: ['$1'].
 select_clause -> expression ',' select_clause: flatten(['$1', '$3']). 
 
-event_param ->  atom: {nil, get_event_param(value_of('$1'))}.
-event_param -> alias '.' atom: {'$1', get_event_param(value_of('$3'))}.
+event_param ->  atom: {nil, value_of('$1')}.
+event_param -> alias '.' atom: {'$1', value_of('$3')}.
 
 from_clause -> from events: '$2'.
+from_clause -> from pattern: {pattern, '$2'}.
+
+pattern -> event '->' event: {'$1','$3'}.
+pattern -> event '->' pattern: {'$1', '$3'}.
+
 event -> atom: {nil, value_of('$1')}. 
 event -> atom as alias: {'$3',value_of('$1')}.
 events -> event: ['$1'].
@@ -113,21 +115,21 @@ value_of(Token) -> element(3, Token).
 line_of(Token) -> element(2, Token).
 type_of(Token) -> element(1, Token).
 flatten(L) -> lists:flatten(L).
-
-%% Functons return Abstract Erlang Syntax Trees
-get_event_param(Param) ->
-    %% AST for "get_param(Event, Param)"
-     Param. %%erl_syntax:atom(Param).
     
-get_ast({Name, SelectClause, FromClause, WhereClause, WithinClause}) ->
+get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
     %% ?debugMsg(io_lib:format("SelectClause: ~p~n",[SelectClause])),
-    %% ?debugMsg(io_lib:format("FromClause: ~p~n",[FromClause])),
+    %% ?debugMsg(io_lib:format("FromClause: ~p~n",[_FromClause])),
     %% ?debugMsg(io_lib:format("WhereClause: ~p~n",[WhereClause])),
+    {IsPattern, FromClause} = case _FromClause of
+				  {pattern, Events} -> {true, tuple_to_list(Events)};
+				  _ -> {false, _FromClause}
+			      end,
+    %% ?debugMsg(io_lib:format("new FromClause: ~p~n",[FromClause])),
     Select = rivus_cep_parser_utils:replace_select_aliases(SelectClause, FromClause),
     Where = rivus_cep_parser_utils:replace_where_aliases(WhereClause, FromClause),
-    From = rivus_cep_parser_utils:remove_from_aliases(FromClause),
-    [{Name}, {Select}, {From}, {Where}, {WithinClause}].
-
-%% create_module(Name) ->
-%%     {attribute,1,module, value_of(Name)}.
+    From = case IsPattern of
+	       true -> {pattern, {rivus_cep_parser_utils:remove_from_aliases(FromClause)}};
+	       false -> {rivus_cep_parser_utils:remove_from_aliases(FromClause)}
+	   end,
+    [{Name}, {Select}, From, {Where}, {WithinClause}].
 

@@ -29,7 +29,7 @@ build_stmt_test() ->
 
     WithinRes = rivus_cep_stmt_builder:build_within_clause(Module), 
     ?assertEqual(re:replace("{Reservoir, Oldest} = rivus_cep_window:get_window( stmt1 ),
-                             MatchSpecs = [ create_match_spec(Event, Oldest) || Event<- State#state.events]", "\\s+", "", [global,{return,list}]),
+                             MatchSpecs = [ create_match_spec(Event, Oldest) || Event<- StateData#state_data.events]", "\\s+", "", [global,{return,list}]),
 		 re:replace(WithinRes, "\\s+", "", [global,{return,list}])),
     
     FromRes = rivus_cep_stmt_builder:build_from_clause(From), 
