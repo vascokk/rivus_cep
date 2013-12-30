@@ -1,4 +1,4 @@
-https://travis-ci.org/vascokk/rivus_cep.png
+[![Build Status](https://travis-ci.org/vascokk/rivus_cep.png)](https://travis-ci.org/vascokk/rivus_cep)
 
 #Rivus CEP
 
