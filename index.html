@@ -36,43 +36,66 @@
         <span class="blc"></span><span class="trc"></span>
         </div>
         <article class="markdown-body">
-          <h3>
-<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+          <h1>
+<a name="rivus-cep" class="anchor" href="#rivus-cep"><span class="octicon octicon-link"></span></a>Rivus CEP</h1>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>Rivus CEP is an Erlang library for complex event processing. It uses a declarative SQL-like DSL for processing the events.</p>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<p>With Rivus you can do things like:</p>
+
+<pre><code>select 
+    ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
+from 
+    event1 as ev1, event2 as ev2
+where 
+    ev1.eventparam2 = ev2.eventparam2
+within 60 seconds
 </code></pre>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+<p>or 'select' events from pattern:</p>
+
+<pre><code>select 
+    ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev2.eventparam4
+from 
+    event1 as ev1 -&gt; event2 as ev2
+where 
+    ev1.eventparam2 = ev2.eventparam2
+within 60 seconds
+</code></pre>
+
+<p>In the second query, the result will be generated only in case when event2 stricltly follows event1, within a 60 seconds window.</p>
+
+<p>For each continuous query statement, similar to the above, a gen_server or gen_fsm (in case of "pattern matching" query) module will be created, using an <a href="https://github.com/erlydtl/erlydtl">ErlyDTL</a> template. </p>
+
+<p>Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries, which are embedded in the template.</p>
+
+<p>Template-generated module will register itself to the  <a href="https://github.com/uwiger/gproc">gproc</a> process registry, for the events listed in the "from" clause. To send events, gproc:send() should be used. Once sent, each event will be received by multiple subscibers (query modules).</p>
+
+<p>For each event type there must be a module implementing the 'event' behavior with the same name used in the "from" clause. The important function that needs to be implemented is - get_param_by_name(Event, ParamName).</p>
+
+<p>See the unit tests for details how to use the library. There are several DSL examples too.</p>
 
 <h3>
-<a name="designer-templates" class="anchor" href="#designer-templates"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
+<a name="current-limitations" class="anchor" href="#current-limitations"><span class="octicon octicon-link"></span></a>Current limitations</h3>
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+<p>The project is in its infancy, so there are a number of limitations:</p>
 
-<h3>
-<a name="rather-drive-stick" class="anchor" href="#rather-drive-stick"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
+<ul>
+<li>avg() aggregation is yet to be implemented;</li>
+<li>using event aliases is mandatory;</li>
+<li>only sliding windows are supported (no 'batch' windows);</li>
+<li>no benchmarks at all;</li>
+<li>extensive testing needed.</li>
+</ul><h3>
+<a name="contributions" class="anchor" href="#contributions"><span class="octicon octicon-link"></span></a>Contributions</h3>
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
-
-<h3>
-<a name="authors-and-contributors" class="anchor" href="#authors-and-contributors"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
-
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
-
-<h3>
-<a name="support-or-contact" class="anchor" href="#support-or-contact"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
-
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
+<p>Contributions and suggestions are most appreciated!</p>
         </article>
       </div>
     </div>
     <footer>
       <div class="owner">
-      <p><a href="https://github.com/vascokk" class="avatar"><img src="https://2.gravatar.com/avatar/a6216332e9dec503a0ba79507b2080cd?d=https%3A%2F%2Fidenticons.github.com%2Faef9f642a501a1f285da7ebe333ea401.png&amp;r=x&amp;s=60" width="48" height="48"/></a> <a href="https://github.com/vascokk">vascokk</a> maintains <a href="https://github.com/vascokk/rivus_cep">Rivus CEP</a></p>
+      <p><a href="https://github.com/vascokk" class="avatar"><img src="https://1.gravatar.com/avatar/a6216332e9dec503a0ba79507b2080cd?d=https%3A%2F%2Fidenticons.github.com%2Faef9f642a501a1f285da7ebe333ea401.png&amp;r=x&amp;s=60" width="48" height="48"/></a> <a href="https://github.com/vascokk">vascokk</a> maintains <a href="https://github.com/vascokk/rivus_cep">Rivus CEP</a></p>
 
 
       </div>
