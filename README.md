@@ -45,6 +45,7 @@ See the unit tests for details how to use the library. There are several DSL exa
 - [ErlyDTL](https://github.com/erlydtl/erlydtl)
 - [gproc](https://github.com/uwiger/gproc)
 - [folsom](https://github.com/boundary/folsom)
+- [lager](https://github.com/basho/lager)
 
 ###Current limitations
 
