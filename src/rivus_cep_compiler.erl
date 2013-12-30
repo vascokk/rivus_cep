@@ -56,4 +56,4 @@ load_query(QueryStr, SubscriberPid)->
     Mod = compile:forms(Forms, [return]),
     {CompileRes, ModName, Bin, _} = Mod,
     code:load_binary(ModName, atom_to_list(ModName), Bin),
-    pattern2:start_link(SubscriberPid).
+    ModName:start_link(SubscriberPid).
