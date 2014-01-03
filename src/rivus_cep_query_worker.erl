@@ -160,13 +160,6 @@ build_select_clause([H|T], EventList, Acc) ->
      build_select_clause(T, EventList, Acc ++ [select_eval(H, EventList)]);
 build_select_clause([], _, Acc) ->
      Acc.
-
-
-maybe_send_result(#state{fsm_state = FsmState, fsm_states = _FsmStates} = State) ->
-    case FsmState == hd(_FsmStates) of
-	true -> send_result(State);
-	false -> nil
-    end.
 	    
 is_correct_state(EventName, #state{fsm_state = FsmState, fsm_states = _FsmStates} = State) ->
     lager:debug("FSM States: ~p~n",[_FsmStates]),
