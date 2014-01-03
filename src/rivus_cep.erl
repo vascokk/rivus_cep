@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 -compile([{parse_transform, lager_transform}]).
 
--export([start_link/1, load_query/4]).
+-export([start_link/1, load_query/4, notify/1, notify/2, notify_sync/1, notify_sync/2]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -27,8 +27,30 @@
 
 -record(state, {query_sup}).
 
+
+
+
+%%--------------------------------------------------------------------
+%% API functions
+%%--------------------------------------------------------------------
 start_link(Supervisor) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [Supervisor], []).
+
+load_query(QueryName, QueryStr, Producers, Subscribers) ->
+    gen_server:call(?SERVER, {load_query, [QueryName, QueryStr, Producers, Subscribers]}).
+
+notify(Event) ->
+    notify(any, Event).
+
+notify(Producer, Event) ->
+    gen_server:cast(?SERVER, {notify, Producer, Event}).
+
+notify_sync(Event) ->
+    notify(any, Event).
+
+notify_sync(Producer, Event) ->
+    gen_server:call(?SERVER, {notify, Producer, Event}).
+    
 
 init([Supervisor]) ->
     QuerySupSpec = {query_worker_sup,
@@ -41,27 +63,25 @@ init([Supervisor]) ->
     lager:info("--- Rivus CEP server started"),
     {ok, #state{}}.
 
-
-%%--------------------------------------------------------------------
-%% API functions
-%%--------------------------------------------------------------------
-load_query(QueryName, QueryStr, Producers, Subscribers) ->
-    gen_server:call(?SERVER, {load_query, [QueryName, QueryStr, Producers, Subscribers]}).
-
-
 %%--------------------------------------------------------------------
 %% gen_server functions
 %%--------------------------------------------------------------------
-handle_call({load_query, Args}, From, #state{query_sup=QuerySup} = State) ->
-    %% Res = rivus_cep_compiler:load_query(Query, Producers, Subscribers),
 
-    {ok, Pid} = supervisor:start_child(QuerySup, [Args]),
-    {reply, {ok,Pid}, State};
-handle_call(Msg, From, State) ->
-    {reply, not_handled, State}.
-
+handle_cast({notify, Producer, Event}, State) ->
+    gproc:send({p, l, {Producer, element(1, Event)}}, {element(1, Event), Event}),
+    {noreply, State};
 handle_cast(_Msg, State) -> 
     {noreply, State}.
+
+
+handle_call({load_query, Args}, From, #state{query_sup=QuerySup} = State) ->
+    {ok, Pid} = supervisor:start_child(QuerySup, [Args]),
+    {reply, {ok,Pid}, State};
+handle_call({notify, Producer, Event}, From, State) ->
+    gproc:send({p, l, {Producer, element(1, Event)}}, {element(1, Event), Event}),
+    {reply, ok, State};
+handle_call(Msg, From, State) ->
+    {reply, not_handled, State}.
 
 handle_info({start_query_supervisor, Supervisor, QuerySupSpec}, State) ->
     {ok, Pid} = supervisor:start_child(Supervisor, QuerySupSpec),

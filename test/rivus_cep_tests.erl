@@ -11,23 +11,24 @@ query_worker_test_() ->
      fun () -> folsom:start(),
 	       lager:start(),
 	       application:start(gproc),
-	       lager:set_loglevel(lager_console_backend, debug)
+	       lager:set_loglevel(lager_console_backend, debug),
+	       application:start(rivus_cep)
      end,
      fun (_) -> folsom:stop(),
 		application:stop(lager),
-		application:stop(gproc)
+		application:stop(gproc),
+		application:stop(rivus_cep)
      end,
 
-     [{"Test template with query without aggregations",
+     [{"Test query without aggregations",
        fun load_query_1/0},
-      {"Test template with aggregation query",
+      {"Test query with aggregation",
        fun load_query_2/0},
       {"Tes query on event sequence (event pattern matching)",
        fun load_pattern/0}]
     }.
 
 load_query_1() ->
-    {ok, CepSup} = rivus_cep_sup:start_link(),
     {ok,Pid} = result_subscriber:start_link(),
 
     QueryStr = "define correlation1 as
@@ -43,12 +44,12 @@ load_query_1() ->
     Event3 = {event1, 20,b,c},
     Event4 = {event2, 30,b,cc,d},
     Event5 = {event2, 40,bb,cc,dd},
-   
-    gproc:send({p, l, {test_query_1, element(1, Event1)}}, {element(1, Event1), Event1}),
-    gproc:send({p, l, {test_query_1, element(1, Event2)}}, {element(1, Event2), Event2}),
-    gproc:send({p, l, {test_query_1, element(1, Event3)}}, {element(1, Event3), Event3}),
-    gproc:send({p, l, {test_query_1, element(1, Event4)}}, {element(1, Event4), Event4}),
-    gproc:send({p, l, {test_query_1, element(1, Event5)}}, {element(1, Event5), Event5}),
+
+    rivus_cep:notify(test_query_1, Event1),
+    rivus_cep:notify(test_query_1, Event2),
+    rivus_cep:notify(test_query_1, Event3),
+    rivus_cep:notify(test_query_1, Event4),
+    rivus_cep:notify(test_query_1, Event5),
 
     timer:sleep(2000),
     
@@ -56,11 +57,9 @@ load_query_1() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     ?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     gen_server:call(QueryPid,stop),
-    gen_server:call(Pid,stop),
-    rivus_cep_sup:stop().
-
+    gen_server:call(Pid,stop).
+    
 load_query_2() ->
-    {ok, CepSup} = rivus_cep_sup:start_link(),
     {ok, Pid} = result_subscriber:start_link(),
     
     QueryStr = "define correlation2 as
@@ -79,23 +78,22 @@ load_query_2() ->
     Event5 = {event2, gr2,bb,50,dd},
     Event6 = {event2, gr3,b,40,d},
 
-    gproc:send({p, l, {test_query_2, element(1, Event1)}}, {element(1, Event1), Event1}),
-    gproc:send({p, l, {test_query_2, element(1, Event2)}}, {element(1, Event2), Event2}),
-    gproc:send({p, l, {test_query_2, element(1, Event3)}}, {element(1, Event3), Event3}),
-    gproc:send({p, l, {test_query_2, element(1, Event4)}}, {element(1, Event4), Event4}),
-    gproc:send({p, l, {test_query_2, element(1, Event5)}}, {element(1, Event5), Event5}),
-    gproc:send({p, l, {test_query_2, element(1, Event6)}}, {element(1, Event6), Event6}),
+    rivus_cep:notify(test_query_2, Event1),
+    rivus_cep:notify(test_query_2, Event2),
+    rivus_cep:notify(test_query_2, Event3),
+    rivus_cep:notify(test_query_2, Event4),
+    rivus_cep:notify(test_query_2, Event5),
+    rivus_cep:notify(test_query_2, Event6),
 
     timer:sleep(2000),
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     ?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
     gen_server:call(QueryPid,stop),
-    gen_server:call(Pid,stop),
-    rivus_cep_sup:stop().
+    gen_server:call(Pid,stop).
 
-load_pattern() ->
-    {ok, CepSup} = rivus_cep_sup:start_link(),
+
+load_pattern() ->    
     {ok, Pid} = result_subscriber:start_link(),
     
     QueryStr = "define pattern1 as
@@ -111,18 +109,17 @@ load_pattern() ->
     Event3 = {event1, 20,b,10},
     Event4 = {event2, 30,b,100,20},
     Event5 = {event2, 40,bb,200,30},
-   
-    gproc:send({p, l, {test_pattern_1, element(1, Event1)}}, {element(1, Event1), Event1}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event2)}}, {element(1, Event2), Event2}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event3)}}, {element(1, Event3), Event3}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event4)}}, {element(1, Event4), Event4}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event5)}}, {element(1, Event5), Event5}),
-
+  
+    rivus_cep:notify(test_pattern_1, Event1),
+    rivus_cep:notify(test_pattern_1, Event2),
+    rivus_cep:notify(test_pattern_1, Event3),
+    rivus_cep:notify(test_pattern_1, Event4),
+    rivus_cep:notify(test_pattern_1, Event5),
+    
     timer:sleep(2000),       
     
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     ?assertEqual([{20,b,100,20}], Values),
     gen_server:call(QueryPid,stop),
-    gen_server:call(Pid,stop),
-    rivus_cep_sup:stop().
+    gen_server:call(Pid,stop).

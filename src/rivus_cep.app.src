@@ -1,12 +1,15 @@
 %%-*- mode: erlang -*-
 {application, rivus_cep,
  [
-  {description, ""},
-  {vsn, "0.1.0"},
+  {description, "Rivus CEP"},
+  {vsn, "0.1"},
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+		  folsom,
+		  gproc,
+		  lager
                  ]},
   {mod, { rivus_cep_app, []}},
   {env, []}

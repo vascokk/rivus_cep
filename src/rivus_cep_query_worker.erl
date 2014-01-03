@@ -79,6 +79,7 @@ init([QueryName, QueryStr, Producers, Subscribers, State]) ->
     
     rivus_cep_window:new(QueryName, slide, WithinClause ),
     [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events],
+    [ gproc:reg({p, l, {any, Event }}) || Event <- Events],
 
     lager:debug("~nStarting: ~p, PID: ~p ~n",[QueryName, self()]),
     {ok, #state{query_name = QueryName, query_type = QueryType, producers = Producers, subscribers = Subscribers,

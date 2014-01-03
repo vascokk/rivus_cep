@@ -17,9 +17,9 @@ query_worker_test_() ->
 		application:stop(gproc)
      end,
 
-     [{"Test template with query without aggregations",
+     [{"Test query without aggregations",
        fun query_1/0},
-      {"Test template with aggregation query",
+      {"Test an aggregation query",
        fun query_2/0},
       {"Tes query on event sequence (event pattern matching)",
        fun pattern/0}]

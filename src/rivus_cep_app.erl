@@ -21,18 +21,19 @@
 %% Application callbacks
 -export([start/0, stop/0, start/2, stop/1]).
 
-%% ===================================================================
-%% Application callbacks
-%% ===================================================================
-
 start() ->
-    application:start(rivus_cep).
+    start(normal, []).
 
 stop() ->
-    application:stop(rivus_cep).
+    stop([]).
 
 start(_StartType, _StartArgs) ->
-    {ok, _} = rivus_cep_sup:start_link().
+    case rivus_cep_sup:start_link() of
+	{ok, Pid} ->
+	    {ok, Pid};
+	Error ->
+	    Error
+    end.
  
 stop(_State) ->
     ok.

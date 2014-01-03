@@ -30,17 +30,51 @@ within 60 seconds
 
 In the second query, the result will be generated only in case when event2 stricltly follows event1, within a 60 seconds window.
 
-A query is started by `rivus_cep:load_query/1`. See `tests/rivus_cep_tests.erl`
+Here is how to use it:
 
-For each continuous query statement, similar to the above, a gen\_server worker will be started. 
+``` erlang
+application:start(rivus_cep)
+
+QueryStr = "define correlation2 as
+                  select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
+                  from event1 as ev1, event2 as ev2
+                   where ev1.eventparam2 = ev2.eventparam2
+                    within 60 seconds; "
+
+Producer = event_producer_1,
+{ok, SubscriberPid} = result_subscriber:start_link(), 
+
+{ok, QueryPid} = rivus_cep:load_query(test_query, QueryStr, [Producer], [SubscriberPid]),
+    
+%% create some evetnts
+Event1 = {event1, gr1,b,10}, 
+Event2 = {event2, gr2,bbb,20},
+
+%% send the events
+rivus_cep:notify(Producer, Event1),
+rivus_cep:notify(Producer, Event2).
+
+%% or if you don't care about the producers
+rivus_cep:notify(Event1),
+rivus_cep:notify(Event2).
+	
+```
+
+The query is started with `rivus_cep:load_query/4`. It takes as arguments: query name, query string, list of event producers and list of query result subscribers.
+
+Each query worker will register itself to the  [gproc](https://github.com/uwiger/gproc) process registry, for the events listed in the "from" clause.
+
+If the events are sent via `rivus_cep:notify/1`, the event will be received by any query subscribed for this event type. With `notify/2` - only the queries subscribed to the particular Producer will receive the event.
+
+For each query there must be at least one Subscriber to receive the query results.
+
+See `tests/rivus_cep_tests.erl` for more usage examples. 
 
 Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries.
 
-Template-generated module will register itself to the  [gproc](https://github.com/uwiger/gproc) process registry, for the events listed in the "from" clause. To send events, `gproc:send()` should be used. Once sent, each event will be received by multiple subscibers (query workers).
+For each event type there must be a module implementing the `event_behavior` with the same name used in the "from" clause. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`. 
 
-For each event type there must be a module implementing the `event_behavior` with the same name used in the "from" clause. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
-
-See the unit tests for details how to use the library. There are several DSL examples too.
+See some DSL examples in `test/rivus_cep_parser_tests.erl`.
 
 ###Dependencies
 
@@ -50,7 +84,7 @@ See the unit tests for details how to use the library. There are several DSL exa
 
 ###Current limitations
 
-The project is in its infancy, so there is a number of limitations/TODOs:
+The project is in its infancy and there is a number of limitations/TODOs:
 
 - each query has its own events 'reservoir' (not quite memory efficient)
 - more aggregation functions are yet to be implemented;
