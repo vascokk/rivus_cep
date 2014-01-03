@@ -46,7 +46,7 @@ notify(Producer, Event) ->
     gen_server:cast(?SERVER, {notify, Producer, Event}).
 
 notify_sync(Event) ->
-    notify(any, Event).
+    notify_sync(any, Event).
 
 notify_sync(Producer, Event) ->
     gen_server:call(?SERVER, {notify, Producer, Event}).
