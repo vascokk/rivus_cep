@@ -30,28 +30,30 @@ within 60 seconds
 
 In the second query, the result will be generated only in case when event2 stricltly follows event1, within a 60 seconds window.
 
-For each continuous query statement, similar to the above, a gen\_server or gen\_fsm \(in case of "pattern matching" query\) module will be created, using an [ErlyDTL](https://github.com/erlydtl/erlydtl) template. 
+A query is started by =rivus_cep:load_query/1=. See =tests/rivus_cep_tests.erl=
 
-Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries, which are embedded in the template.
+For each continuous query statement, similar to the above, a gen\_server worker will be started. 
+
+Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries.
 
 Template-generated module will register itself to the  [gproc](https://github.com/uwiger/gproc) process registry, for the events listed in the "from" clause. To send events, gproc:send() should be used. Once sent, each event will be received by multiple subscibers (query modules).
 
-For each event type there must be a module implementing the 'event' behavior with the same name used in the "from" clause. The important function that needs to be implemented is - get\_param\_by\_name(Event, ParamName).
+For each event type there must be a module implementing the 'event' behavior with the same name used in the "from" clause. The important function that needs to be implemented is - =get_param_by_name(Event, ParamName)=.
 
 See the unit tests for details how to use the library. There are several DSL examples too.
 
 ###Dependencies
 
-- [ErlyDTL](https://github.com/erlydtl/erlydtl)
 - [gproc](https://github.com/uwiger/gproc)
 - [folsom](https://github.com/boundary/folsom)
 - [lager](https://github.com/basho/lager)
 
 ###Current limitations
 
-The project is in its infancy, so there is a number of limitations:
+The project is in its infancy, so there is a number of limitations/TODOs:
 
-- avg() aggregation is yet to be implemented;
+- each query has its own events 'reservoir' (not quite memory efficient)
+- more aggregation functions are yet to be implemented;
 - using event aliases is mandatory;
 - only sliding windows are supported (no 'batch' windows);
 - no benchmarks at all;
