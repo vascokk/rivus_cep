@@ -1,42 +1,33 @@
 <!doctype html>
-<!-- The Time Machine GitHub pages theme was designed and developed by Jon Rohan, on Feb 7, 2012. -->
-<!-- Follow him for fun. http://twitter.com/jonrohan. Tail his code on http://github.com/jonrohan -->
 <html>
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Rivus CEP by vascokk</title>
 
-  <link rel="stylesheet" href="stylesheets/stylesheet.css" media="screen"/>
-  <link rel="stylesheet" href="stylesheets/pygment_trac.css"/>
-  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-  <script type="text/javascript" src="javascripts/script.js"></script>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-  <title>Rivus CEP</title>
-  <meta name="description" content="Complex event processing in Erlang">
-
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-
-</head>
-
-<body>
-
-  <div class="wrapper">
-    <header>
-      <h1 class="title">Rivus CEP</h1>
-    </header>
-    <div id="container">
-      <p class="tagline">Complex event processing in Erlang</p>
-      <div id="main" role="main">
-        <div class="download-bar">
-        <div class="inner">
-          <a href="https://github.com/vascokk/rivus_cep/tarball/master" class="download-button tar"><span>Download</span></a>
-          <a href="https://github.com/vascokk/rivus_cep/zipball/master" class="download-button zip"><span>Download</span></a>
-          <a href="https://github.com/vascokk/rivus_cep" class="code">View Rivus CEP on GitHub</a>
-        </div>
-        <span class="blc"></span><span class="trc"></span>
-        </div>
-        <article class="markdown-body">
-          <p><a href="https://travis-ci.org/vascokk/rivus_cep"><img src="https://travis-ci.org/vascokk/rivus_cep.png" alt="Build Status"></a></p>
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Rivus CEP</h1>
+        <p>Complex event processing in Erlang</p>
+        <p class="view"><a href="https://github.com/vascokk/rivus_cep">View the Project on GitHub <small>vascokk/rivus_cep</small></a></p>
+        <ul>
+          <li><a href="https://github.com/vascokk/rivus_cep/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/vascokk/rivus_cep/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/vascokk/rivus_cep">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p><a href="https://travis-ci.org/vascokk/rivus_cep"><img src="https://travis-ci.org/vascokk/rivus_cep.png" alt="Build Status"></a></p>
 
 <h1>
 <a name="rivus-cep" class="anchor" href="#rivus-cep"><span class="octicon octicon-link"></span></a>Rivus CEP</h1>
@@ -67,31 +58,66 @@ within 60 seconds
 
 <p>In the second query, the result will be generated only in case when event2 stricltly follows event1, within a 60 seconds window.</p>
 
-<p>For each continuous query statement, similar to the above, a gen_server or gen_fsm (in case of "pattern matching" query) module will be created, using an <a href="https://github.com/erlydtl/erlydtl">ErlyDTL</a> template. </p>
+<p>Here is how to use it:</p>
 
-<p>Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries, which are embedded in the template.</p>
+<div class="highlight highlight-erlang"><pre><span class="nn">application</span><span class="p">:</span><span class="nf">start</span><span class="p">(</span><span class="n">rivus_cep</span><span class="p">)</span>
 
-<p>Template-generated module will register itself to the  <a href="https://github.com/uwiger/gproc">gproc</a> process registry, for the events listed in the "from" clause. To send events, gproc:send() should be used. Once sent, each event will be received by multiple subscibers (query modules).</p>
+<span class="nv">QueryStr</span> <span class="o">=</span> <span class="s">"define correlation2 as</span>
+<span class="s">                  select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) </span>
+<span class="s">                  from event1 as ev1, event2 as ev2</span>
+<span class="s">                   where ev1.eventparam2 = ev2.eventparam2</span>
+<span class="s">                    within 60 seconds; "</span>
 
-<p>For each event type there must be a module implementing the 'event' behavior with the same name used in the "from" clause. The important function that needs to be implemented is - get_param_by_name(Event, ParamName).</p>
+<span class="nv">Producer</span> <span class="o">=</span> <span class="n">event_producer_1</span><span class="p">,</span>
+<span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">SubscriberPid</span><span class="p">}</span> <span class="o">=</span> <span class="nn">result_subscriber</span><span class="p">:</span><span class="nf">start_link</span><span class="p">(),</span> 
 
-<p>See the unit tests for details how to use the library. There are several DSL examples too.</p>
+<span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">QueryPid</span><span class="p">}</span> <span class="o">=</span> <span class="nn">rivus_cep</span><span class="p">:</span><span class="nf">load_query</span><span class="p">(</span><span class="n">test_query</span><span class="p">,</span> <span class="nv">QueryStr</span><span class="p">,</span> <span class="p">[</span><span class="nv">Producer</span><span class="p">],</span> <span class="p">[</span><span class="nv">SubscriberPid</span><span class="p">]),</span>
+
+<span class="c">%% create some evetnts</span>
+<span class="nv">Event1</span> <span class="o">=</span> <span class="p">{</span><span class="n">event1</span><span class="p">,</span> <span class="n">gr1</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="mi">10</span><span class="p">},</span> 
+<span class="nv">Event2</span> <span class="o">=</span> <span class="p">{</span><span class="n">event2</span><span class="p">,</span> <span class="n">gr2</span><span class="p">,</span><span class="n">bbb</span><span class="p">,</span><span class="mi">20</span><span class="p">},</span>
+
+<span class="c">%% send the events</span>
+<span class="nn">rivus_cep</span><span class="p">:</span><span class="nf">notify</span><span class="p">(</span><span class="nv">Producer</span><span class="p">,</span> <span class="nv">Event1</span><span class="p">),</span>
+<span class="nn">rivus_cep</span><span class="p">:</span><span class="nf">notify</span><span class="p">(</span><span class="nv">Producer</span><span class="p">,</span> <span class="nv">Event2</span><span class="p">).</span>
+
+<span class="c">%% or if you don't care about the producers</span>
+<span class="nn">rivus_cep</span><span class="p">:</span><span class="nf">notify</span><span class="p">(</span><span class="nv">Event1</span><span class="p">),</span>
+<span class="nn">rivus_cep</span><span class="p">:</span><span class="nf">notify</span><span class="p">(</span><span class="nv">Event2</span><span class="p">).</span>
+
+</pre></div>
+
+<p>The query is started with <code>rivus_cep:load_query/4</code>. It takes as arguments: query name, query string, list of event producers and list of query result subscribers.</p>
+
+<p>Each query worker will register itself to the  <a href="https://github.com/uwiger/gproc">gproc</a> process registry, for the events listed in the "from" clause.</p>
+
+<p>If the events are sent via <code>rivus_cep:notify/1</code>, the event will be received by any query subscribed for this event type. With <code>notify/2</code> - only the queries subscribed to the particular Producer will receive the event.</p>
+
+<p>For each query there must be at least one Subscriber to receive the query results.</p>
+
+<p>See <code>tests/rivus_cep_tests.erl</code> for more usage examples. </p>
+
+<p>Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries.</p>
+
+<p>For each event type there must be a module implementing the <code>event_behavior</code> with the same name used in the "from" clause. The important function that needs to be implemented is - <code>get_param_by_name(Event, ParamName)</code>. </p>
+
+<p>See some DSL examples in <code>test/rivus_cep_parser_tests.erl</code>.</p>
 
 <h3>
 <a name="dependencies" class="anchor" href="#dependencies"><span class="octicon octicon-link"></span></a>Dependencies</h3>
 
 <ul>
-<li><a href="https://github.com/erlydtl/erlydtl">ErlyDTL</a></li>
 <li><a href="https://github.com/uwiger/gproc">gproc</a></li>
 <li><a href="https://github.com/boundary/folsom">folsom</a></li>
 <li><a href="https://github.com/basho/lager">lager</a></li>
 </ul><h3>
 <a name="current-limitations" class="anchor" href="#current-limitations"><span class="octicon octicon-link"></span></a>Current limitations</h3>
 
-<p>The project is in its infancy, so there is a number of limitations:</p>
+<p>The project is in its infancy and there is a number of limitations/TODOs:</p>
 
 <ul>
-<li>avg() aggregation is yet to be implemented;</li>
+<li>each query has its own events 'reservoir' (not quite memory efficient)</li>
+<li>more aggregation functions are yet to be implemented;</li>
 <li>using event aliases is mandatory;</li>
 <li>only sliding windows are supported (no 'batch' windows);</li>
 <li>no benchmarks at all;</li>
@@ -100,26 +126,13 @@ within 60 seconds
 <a name="contributions" class="anchor" href="#contributions"><span class="octicon octicon-link"></span></a>Contributions</h3>
 
 <p>Contributions and suggestions are most appreciated!</p>
-        </article>
-      </div>
+      </section>
     </div>
     <footer>
-      <div class="owner">
-      <p><a href="https://github.com/vascokk" class="avatar"><img src="https://1.gravatar.com/avatar/a6216332e9dec503a0ba79507b2080cd?d=https%3A%2F%2Fidenticons.github.com%2Faef9f642a501a1f285da7ebe333ea401.png&amp;r=x&amp;s=60" width="48" height="48"/></a> <a href="https://github.com/vascokk">vascokk</a> maintains <a href="https://github.com/vascokk/rivus_cep">Rivus CEP</a></p>
-
-
-      </div>
-      <div class="creds">
-        <small>This page generated using <a href="http://pages.github.com/">GitHub Pages</a><br/>theme by <a href="https://twitter.com/jonrohan/">Jon Rohan</a></small>
-      </div>
+      <p>Project maintained by <a href="https://github.com/vascokk">vascokk</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
     </footer>
-  </div>
-  <div class="current-section">
-    <a href="#top">Scroll to top</a>
-    <a href="https://github.com/vascokk/rivus_cep/tarball/master" class="tar">tar</a><a href="https://github.com/vascokk/rivus_cep/zipball/master" class="zip">zip</a><a href="" class="code">source code</a>
-    <p class="name"></p>
-  </div>
-
-  
-</body>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
 </html>
