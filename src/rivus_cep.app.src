@@ -8,7 +8,7 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { rivus_cep_compiler, []}},
+  {mod, { rivus_cep_app, []}},
   {env, []}
  ]}.
 

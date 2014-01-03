@@ -24,10 +24,11 @@
 -compile({parse_transform,qlc}).
 
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, code_change/3, terminate/2]).
--export([start_link/1, reset/1, get_result/1, update/1]).
+-export([start_link/2]).
 
 -record(state_data,{
-	  owner,
+	  producers,
+	  subscribers,
 	  events = [ {{ eventList|join:", " }} ] ,
 	  timeout = {{ timeout }},
 	  output = []
@@ -35,31 +36,19 @@
 
 %%% API functions
 
-start_link(Owner) ->
-    gen_server:start_link( {{stmtName}}, [Owner, #state_data{}], []).
+start_link(Producers, Subscribers) ->
+    gen_server:start_link( {{stmtName}}, [Producers, Subscribers, #state_data{}], []).
 
-init([Owner, StateData]) ->
+init([Producers, Subscribers, StateData]) ->
     rivus_cep_window:new( {{stmtName}}, slide, {{timeout}} ),
-   %% [ gproc:reg({p, l, {Owner, Event }}) || Event <- StateData#state_data.events],
-    {% for eventName in eventList %}
-       gproc:reg({p, l, {Owner, {{eventName}} } }),
-    {% endfor %}
-    gproc:reg({p, l, get_result}),
-    lager:debug("~nStarting: {{stmtName}}, Owner:~p, PID: ~p ~n",[Owner, self()]),
-    {ok, #state_data{owner = Owner}}.
+    [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event<-StateData#state_data.events],
+    %% for eventName in eventList %}
+    %% [gproc:reg({p, l, {Owner, {{eventName}} } }),
+    %% endfor %}
+    %%%%gproc:reg({p, l, get_result}),
+    lager:debug("~nStarting: {{stmtName}}, PID: ~p ~n",[self()]),
+    {ok, #state_data{producers = Producers, subscribers = Subscribers}}.
 
-reset(Owner) ->
-    gen_server:call(Owner, reset).
-
-
-
-get_result(Owner) ->
-    gen_server:call(Owner, get_result).
-
-
-%% Internal functions
-update(Event) ->
-    Event. %%TODO (not needed)
 
 create_match_spec(Event, Oldest) ->
     ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==Event  -> Value end).
@@ -68,15 +57,18 @@ create_match_spec(Event, Oldest) ->
 create_from_qh(MatchSpec, Reservoir) ->
      ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).
 
-%% gen_server functions
-
-
-%%handle_call(get_result, From, StateData) ->
 send_result(StateData) ->
+
+    {Reservoir, Oldest} = rivus_cep_window:get_window( {{stmtName}} ),
+    MatchSpecs = [create_match_spec(Event, Oldest) || Event<- StateData#state_data.events],
+    FromQueryHandlers = [create_from_qh(MS, Reservoir) || MS <- MatchSpecs],
+    
     {{resultsetStmt}}
  
     ResultSet = qlc:e(QH),    
+
     lager:debug("---> Result Set: ~p", [ResultSet]),
+
     case ResultSet of
 	[] -> nil;
 	_ -> begin
@@ -88,10 +80,10 @@ send_result(StateData) ->
 			      false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
 			  end,
 		 lager:debug("---> Result: ~p <-----", [Result]),
-		 gproc:send({p, l, {StateData#state_data.owner, result_subscribers}}, Result)
+		 
+		 [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-StateData#state_data.subscribers]
 	     end
     end.
-%% {reply, {ok, Result}, StateData};
 
 	
 handle_call(Request, From, StateData) ->
@@ -103,7 +95,7 @@ handle_cast(Msg, StateData) ->
 
 
 {% for eventName in eventList %}
-handle_info({ {{ eventName }} , Event}, #state_data{owner = Owner} = StateData) ->
+handle_info({ {{ eventName }} , Event}, StateData) ->
     lager:debug("handle_info Event: ~p",[Event]),
     rivus_cep_window:update( {{stmtName}}, Event),
     send_result(StateData),

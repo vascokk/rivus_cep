@@ -2,7 +2,7 @@
 %% @Vasil Kolarov
 -module(rivus_cep_parser).
 -export([parse/1, parse_and_scan/1, format_error/1]).
--file("../src/rivus_cep_parser.yrl", 109).
+-file("src/rivus_cep_parser.yrl", 109).
 
 -import(erl_syntax, []).
 -include_lib("eunit/include/eunit.hrl").
@@ -214,7 +214,7 @@ yecctoken2string(Other) ->
 
 
 
--file("../src/rivus_cep_parser.erl", 217).
+-file("src/rivus_cep_parser.erl", 217).
 
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_0(S, Cat, Ss, Stack, T, Ts, Tzr);
@@ -1124,7 +1124,7 @@ yeccgoto_within_clause(54=_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_82(_S, Cat, Ss, Stack, T, Ts, Tzr).
 
 -compile({inline,yeccpars2_4_/1}).
--file("../src/rivus_cep_parser.yrl", 53).
+-file("src/rivus_cep_parser.yrl", 53).
 yeccpars2_4_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1132,7 +1132,7 @@ yeccpars2_4_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_9_/1}).
--file("../src/rivus_cep_parser.yrl", 55).
+-file("src/rivus_cep_parser.yrl", 55).
 yeccpars2_9_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1140,7 +1140,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_)'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_)'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1148,7 +1148,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_*'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_*'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1156,7 +1156,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_+'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_+'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1164,7 +1164,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_,'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_,'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1172,7 +1172,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_-'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_-'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1180,7 +1180,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_/'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_/'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1188,7 +1188,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_<'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_<'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1196,7 +1196,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_<='/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_<='(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1204,7 +1204,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_<>'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_<>'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1212,7 +1212,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_='/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_='(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1220,7 +1220,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_>'/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_>'(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1228,7 +1228,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,'yeccpars2_13_>='/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 'yeccpars2_13_>='(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1236,7 +1236,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_13_and/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 yeccpars2_13_and(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1244,7 +1244,7 @@ yeccpars2_13_and(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_13_from/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 yeccpars2_13_from(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1252,7 +1252,7 @@ yeccpars2_13_from(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_13_or/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 yeccpars2_13_or(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1260,7 +1260,7 @@ yeccpars2_13_or(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_13_semicolon/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 yeccpars2_13_semicolon(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1268,7 +1268,7 @@ yeccpars2_13_semicolon(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_13_within/1}).
--file("../src/rivus_cep_parser.yrl", 58).
+-file("src/rivus_cep_parser.yrl", 58).
 yeccpars2_13_within(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1276,7 +1276,7 @@ yeccpars2_13_within(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_13_/1}).
--file("../src/rivus_cep_parser.yrl", 72).
+-file("src/rivus_cep_parser.yrl", 72).
 yeccpars2_13_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1284,7 +1284,7 @@ yeccpars2_13_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_16_/1}).
--file("../src/rivus_cep_parser.yrl", 84).
+-file("src/rivus_cep_parser.yrl", 84).
 yeccpars2_16_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1292,7 +1292,7 @@ yeccpars2_16_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_17_/1}).
--file("../src/rivus_cep_parser.yrl", 83).
+-file("src/rivus_cep_parser.yrl", 83).
 yeccpars2_17_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1300,7 +1300,7 @@ yeccpars2_17_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_22_/1}).
--file("../src/rivus_cep_parser.yrl", 80).
+-file("src/rivus_cep_parser.yrl", 80).
 yeccpars2_22_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1308,7 +1308,7 @@ yeccpars2_22_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_27_/1}).
--file("../src/rivus_cep_parser.yrl", 79).
+-file("src/rivus_cep_parser.yrl", 79).
 yeccpars2_27_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1316,7 +1316,7 @@ yeccpars2_27_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_28_/1}).
--file("../src/rivus_cep_parser.yrl", 77).
+-file("src/rivus_cep_parser.yrl", 77).
 yeccpars2_28_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1324,7 +1324,7 @@ yeccpars2_28_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_29_/1}).
--file("../src/rivus_cep_parser.yrl", 76).
+-file("src/rivus_cep_parser.yrl", 76).
 yeccpars2_29_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1332,7 +1332,7 @@ yeccpars2_29_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_30_/1}).
--file("../src/rivus_cep_parser.yrl", 78).
+-file("src/rivus_cep_parser.yrl", 78).
 yeccpars2_30_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1340,7 +1340,7 @@ yeccpars2_30_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_32_/1}).
--file("../src/rivus_cep_parser.yrl", 59).
+-file("src/rivus_cep_parser.yrl", 59).
 yeccpars2_32_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1348,7 +1348,7 @@ yeccpars2_32_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_34_/1}).
--file("../src/rivus_cep_parser.yrl", 56).
+-file("src/rivus_cep_parser.yrl", 56).
 yeccpars2_34_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1356,7 +1356,7 @@ yeccpars2_34_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_37_/1}).
--file("../src/rivus_cep_parser.yrl", 81).
+-file("src/rivus_cep_parser.yrl", 81).
 yeccpars2_37_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1364,7 +1364,7 @@ yeccpars2_37_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_38_/1}).
--file("../src/rivus_cep_parser.yrl", 51).
+-file("src/rivus_cep_parser.yrl", 51).
 yeccpars2_38_(__Stack0) ->
  [__6,__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1372,7 +1372,7 @@ yeccpars2_38_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_40_/1}).
--file("../src/rivus_cep_parser.yrl", 62).
+-file("src/rivus_cep_parser.yrl", 62).
 yeccpars2_40_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1380,7 +1380,7 @@ yeccpars2_40_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_41_/1}).
--file("../src/rivus_cep_parser.yrl", 61).
+-file("src/rivus_cep_parser.yrl", 61).
 yeccpars2_41_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1388,7 +1388,7 @@ yeccpars2_41_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_42_/1}).
--file("../src/rivus_cep_parser.yrl", 69).
+-file("src/rivus_cep_parser.yrl", 69).
 yeccpars2_42_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1396,7 +1396,7 @@ yeccpars2_42_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_43_/1}).
--file("../src/rivus_cep_parser.yrl", 67).
+-file("src/rivus_cep_parser.yrl", 67).
 yeccpars2_43_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1404,7 +1404,7 @@ yeccpars2_43_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_45_/1}).
--file("../src/rivus_cep_parser.yrl", 68).
+-file("src/rivus_cep_parser.yrl", 68).
 yeccpars2_45_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1412,7 +1412,7 @@ yeccpars2_45_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_46_/1}).
--file("../src/rivus_cep_parser.yrl", 72).
+-file("src/rivus_cep_parser.yrl", 72).
 yeccpars2_46_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1420,7 +1420,7 @@ yeccpars2_46_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_49_/1}).
--file("../src/rivus_cep_parser.yrl", 65).
+-file("src/rivus_cep_parser.yrl", 65).
 yeccpars2_49_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1428,7 +1428,7 @@ yeccpars2_49_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_50_/1}).
--file("../src/rivus_cep_parser.yrl", 64).
+-file("src/rivus_cep_parser.yrl", 64).
 yeccpars2_50_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1436,7 +1436,7 @@ yeccpars2_50_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_51_/1}).
--file("../src/rivus_cep_parser.yrl", 70).
+-file("src/rivus_cep_parser.yrl", 70).
 yeccpars2_51_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1444,7 +1444,7 @@ yeccpars2_51_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_52_/1}).
--file("../src/rivus_cep_parser.yrl", 69).
+-file("src/rivus_cep_parser.yrl", 69).
 yeccpars2_52_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1452,7 +1452,7 @@ yeccpars2_52_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_53_/1}).
--file("../src/rivus_cep_parser.yrl", 45).
+-file("src/rivus_cep_parser.yrl", 45).
 yeccpars2_53_(__Stack0) ->
  [__7,__6,__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1460,7 +1460,7 @@ yeccpars2_53_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_54_/1}).
--file("../src/rivus_cep_parser.yrl", 38).
+-file("src/rivus_cep_parser.yrl", 38).
 yeccpars2_54_(__Stack0) ->
  [__7,__6,__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1468,7 +1468,7 @@ yeccpars2_54_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_58_/1}).
--file("../src/rivus_cep_parser.yrl", 97).
+-file("src/rivus_cep_parser.yrl", 97).
 yeccpars2_58_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1476,7 +1476,7 @@ yeccpars2_58_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_59_/1}).
--file("../src/rivus_cep_parser.yrl", 74).
+-file("src/rivus_cep_parser.yrl", 74).
 yeccpars2_59_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1484,7 +1484,7 @@ yeccpars2_59_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_71_/1}).
--file("../src/rivus_cep_parser.yrl", 94).
+-file("src/rivus_cep_parser.yrl", 94).
 yeccpars2_71_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1492,7 +1492,7 @@ yeccpars2_71_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_72_/1}).
--file("../src/rivus_cep_parser.yrl", 92).
+-file("src/rivus_cep_parser.yrl", 92).
 yeccpars2_72_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1500,7 +1500,7 @@ yeccpars2_72_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_73_/1}).
--file("../src/rivus_cep_parser.yrl", 90).
+-file("src/rivus_cep_parser.yrl", 90).
 yeccpars2_73_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1508,7 +1508,7 @@ yeccpars2_73_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_74_/1}).
--file("../src/rivus_cep_parser.yrl", 95).
+-file("src/rivus_cep_parser.yrl", 95).
 yeccpars2_74_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1516,7 +1516,7 @@ yeccpars2_74_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_75_/1}).
--file("../src/rivus_cep_parser.yrl", 93).
+-file("src/rivus_cep_parser.yrl", 93).
 yeccpars2_75_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1524,7 +1524,7 @@ yeccpars2_75_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_76_/1}).
--file("../src/rivus_cep_parser.yrl", 91).
+-file("src/rivus_cep_parser.yrl", 91).
 yeccpars2_76_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1532,7 +1532,7 @@ yeccpars2_76_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_77_/1}).
--file("../src/rivus_cep_parser.yrl", 89).
+-file("src/rivus_cep_parser.yrl", 89).
 yeccpars2_77_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1540,7 +1540,7 @@ yeccpars2_77_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_80_/1}).
--file("../src/rivus_cep_parser.yrl", 86).
+-file("src/rivus_cep_parser.yrl", 86).
 yeccpars2_80_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1548,7 +1548,7 @@ yeccpars2_80_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_81_/1}).
--file("../src/rivus_cep_parser.yrl", 87).
+-file("src/rivus_cep_parser.yrl", 87).
 yeccpars2_81_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1556,7 +1556,7 @@ yeccpars2_81_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_82_/1}).
--file("../src/rivus_cep_parser.yrl", 31).
+-file("src/rivus_cep_parser.yrl", 31).
 yeccpars2_82_(__Stack0) ->
  [__8,__7,__6,__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1564,4 +1564,4 @@ yeccpars2_82_(__Stack0) ->
   end | __Stack].
 
 
--file("../src/rivus_cep_parser.yrl", 136).
+-file("src/rivus_cep_parser.yrl", 136).

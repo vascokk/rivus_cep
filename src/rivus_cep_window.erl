@@ -16,6 +16,8 @@
 
 -module(rivus_cep_window).
 
+-compile([{parse_transform, lager_transform}]).
+
 -include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -include_lib("../deps/folsom/include/folsom.hrl").
@@ -48,6 +50,7 @@ new(Name, SampleType, SampleSize, Alpha) ->
     folsom_metrics_histogram:new(Name, SampleType, SampleSize, Alpha).
 
 update(Name, Value) ->
+    lager:debug("~nUpdate window:~p~n",[Name]),
     folsom_metrics_histogram:update(Name, Value).
 
 % gets the histogram record from ets

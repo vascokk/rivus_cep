@@ -12,7 +12,7 @@
 -export([format_error/1]).
 
 %% User code. This is placed here to allow extra attributes.
--file("../src/rivus_cep_scanner.xrl", 51).
+-file("src/rivus_cep_scanner.xrl", 51).
 
 -export([reserved_word/1]).
 
@@ -332,7 +332,7 @@ yysuf(List, N) -> lists:nthtail(N, List).
 %% return signal either an unrecognised character or end of current
 %% input.
 
--file("../src/rivus_cep_scanner.erl", 334).
+-file("src/rivus_cep_scanner.erl", 334).
 yystate() -> 36.
 
 yystate(39, Ics, Line, Tlen, _, _) ->
@@ -689,12 +689,12 @@ yyaction(20, _, _, _) ->
 yyaction(_, _, _, _) -> error.
 
 -compile({inline,yyaction_0/2}).
--file("../src/rivus_cep_scanner.xrl", 11).
+-file("src/rivus_cep_scanner.xrl", 11).
 yyaction_0(TokenChars, TokenLine) ->
      { token, { integer, TokenLine, list_to_integer (TokenChars) } } .
 
 -compile({inline,yyaction_1/2}).
--file("../src/rivus_cep_scanner.xrl", 13).
+-file("src/rivus_cep_scanner.xrl", 13).
 yyaction_1(TokenChars, TokenLine) ->
      Atom = list_to_atom (TokenChars),
      { token, case reserved_word (Atom) of
@@ -706,98 +706,98 @@ yyaction_1(TokenChars, TokenLine) ->
      end } .
 
 -compile({inline,yyaction_2/2}).
--file("../src/rivus_cep_scanner.xrl", 22).
+-file("src/rivus_cep_scanner.xrl", 22).
 yyaction_2(TokenChars, TokenLine) ->
      { token, { var, TokenLine, list_to_atom (TokenChars) } } .
 
 -compile({inline,yyaction_3/3}).
--file("../src/rivus_cep_scanner.xrl", 26).
+-file("src/rivus_cep_scanner.xrl", 26).
 yyaction_3(TokenChars, TokenLen, TokenLine) ->
      S = lists : sublist (TokenChars, 2, TokenLen - 2),
      { token, { string, TokenLine, string_gen (S) } } .
 
 -compile({inline,yyaction_4/2}).
--file("../src/rivus_cep_scanner.xrl", 29).
+-file("src/rivus_cep_scanner.xrl", 29).
 yyaction_4(TokenChars, TokenLine) ->
      { token, { char, TokenLine, cc_convert (TokenChars) } } .
 
 -compile({inline,yyaction_5/1}).
--file("../src/rivus_cep_scanner.xrl", 30).
+-file("src/rivus_cep_scanner.xrl", 30).
 yyaction_5(TokenLine) ->
      { token, { '+', TokenLine } } .
 
 -compile({inline,yyaction_6/1}).
--file("../src/rivus_cep_scanner.xrl", 31).
+-file("src/rivus_cep_scanner.xrl", 31).
 yyaction_6(TokenLine) ->
      { token, { '-', TokenLine } } .
 
 -compile({inline,yyaction_7/1}).
--file("../src/rivus_cep_scanner.xrl", 32).
+-file("src/rivus_cep_scanner.xrl", 32).
 yyaction_7(TokenLine) ->
      { token, { '*', TokenLine } } .
 
 -compile({inline,yyaction_8/1}).
--file("../src/rivus_cep_scanner.xrl", 33).
+-file("src/rivus_cep_scanner.xrl", 33).
 yyaction_8(TokenLine) ->
      { token, { '/', TokenLine } } .
 
 -compile({inline,yyaction_9/1}).
--file("../src/rivus_cep_scanner.xrl", 34).
+-file("src/rivus_cep_scanner.xrl", 34).
 yyaction_9(TokenLine) ->
      { token, { '(', TokenLine } } .
 
 -compile({inline,yyaction_10/1}).
--file("../src/rivus_cep_scanner.xrl", 35).
+-file("src/rivus_cep_scanner.xrl", 35).
 yyaction_10(TokenLine) ->
      { token, { ')', TokenLine } } .
 
 -compile({inline,yyaction_11/1}).
--file("../src/rivus_cep_scanner.xrl", 36).
+-file("src/rivus_cep_scanner.xrl", 36).
 yyaction_11(TokenLine) ->
      { token, { '=', TokenLine } } .
 
 -compile({inline,yyaction_12/1}).
--file("../src/rivus_cep_scanner.xrl", 37).
+-file("src/rivus_cep_scanner.xrl", 37).
 yyaction_12(TokenLine) ->
      { token, { '<', TokenLine } } .
 
 -compile({inline,yyaction_13/1}).
--file("../src/rivus_cep_scanner.xrl", 38).
+-file("src/rivus_cep_scanner.xrl", 38).
 yyaction_13(TokenLine) ->
      { token, { '>', TokenLine } } .
 
 -compile({inline,yyaction_14/1}).
--file("../src/rivus_cep_scanner.xrl", 39).
+-file("src/rivus_cep_scanner.xrl", 39).
 yyaction_14(TokenLine) ->
      { token, { '>=', TokenLine } } .
 
 -compile({inline,yyaction_15/1}).
--file("../src/rivus_cep_scanner.xrl", 40).
+-file("src/rivus_cep_scanner.xrl", 40).
 yyaction_15(TokenLine) ->
      { token, { '<=', TokenLine } } .
 
 -compile({inline,yyaction_16/1}).
--file("../src/rivus_cep_scanner.xrl", 41).
+-file("src/rivus_cep_scanner.xrl", 41).
 yyaction_16(TokenLine) ->
      { token, { '<>', TokenLine } } .
 
 -compile({inline,yyaction_17/1}).
--file("../src/rivus_cep_scanner.xrl", 42).
+-file("src/rivus_cep_scanner.xrl", 42).
 yyaction_17(TokenLine) ->
      { token, { '->', TokenLine } } .
 
 -compile({inline,yyaction_18/2}).
--file("../src/rivus_cep_scanner.xrl", 45).
+-file("src/rivus_cep_scanner.xrl", 45).
 yyaction_18(TokenChars, TokenLine) ->
      { token, { list_to_atom (TokenChars), TokenLine } } .
 
 -compile({inline,yyaction_19/1}).
--file("../src/rivus_cep_scanner.xrl", 46).
+-file("src/rivus_cep_scanner.xrl", 46).
 yyaction_19(TokenLine) ->
      { end_token, { semicolon, TokenLine } } .
 
 -compile({inline,yyaction_20/0}).
--file("../src/rivus_cep_scanner.xrl", 47).
+-file("src/rivus_cep_scanner.xrl", 47).
 yyaction_20() ->
      skip_token .
 
