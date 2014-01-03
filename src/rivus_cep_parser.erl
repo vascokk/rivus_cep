@@ -13,14 +13,10 @@ type_of(Token) -> element(1, Token).
 flatten(L) -> lists:flatten(L).
     
 get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
-    %% ?debugMsg(io_lib:format("SelectClause: ~p~n",[SelectClause])),
-    %% ?debugMsg(io_lib:format("FromClause: ~p~n",[_FromClause])),
-    %% ?debugMsg(io_lib:format("WhereClause: ~p~n",[WhereClause])),
     {IsPattern, FromClause} = case _FromClause of
 				  {pattern, Events} -> {true, tuple_to_list(Events)};
 				  _ -> {false, _FromClause}
 			      end,
-    %% ?debugMsg(io_lib:format("new FromClause: ~p~n",[FromClause])),
     Select = rivus_cep_parser_utils:replace_select_aliases(SelectClause, FromClause),
     Where = rivus_cep_parser_utils:replace_where_aliases(WhereClause, FromClause),
     From = case IsPattern of
@@ -214,7 +210,7 @@ yecctoken2string(Other) ->
 
 
 
--file("src/rivus_cep_parser.erl", 217).
+-file("src/rivus_cep_parser.erl", 213).
 
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_0(S, Cat, Ss, Stack, T, Ts, Tzr);
@@ -1564,4 +1560,4 @@ yeccpars2_82_(__Stack0) ->
   end | __Stack].
 
 
--file("src/rivus_cep_parser.yrl", 136).
+-file("src/rivus_cep_parser.yrl", 132).

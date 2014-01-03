@@ -18,28 +18,26 @@
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0]).
 
-%% Supervisor callbacks
+-export([start_link/0, stop/0]).
+
 -export([init/1]).
-
-%% ===================================================================
-%% API functions
-%% ===================================================================
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
-
 init(_Args) ->
     CepServ = { rivus_cep,
-                  {rivus_cep, start_link, []},
+                  {rivus_cep, start_link, [self()]},
                   permanent, 5000, worker, [rivus_cep]},
 
     { ok,
         { {one_for_one, 10, 3600},
           [CepServ]}}.
+
+stop() ->
+    case whereis(rivus_cep_sup) of
+	P when is_pid(P) ->
+	    exit(P, normal);
+	_ -> ok
+    end.

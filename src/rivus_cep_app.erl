@@ -32,7 +32,7 @@ stop() ->
     application:stop(rivus_cep).
 
 start(_StartType, _StartArgs) ->
-    {ok, Pid} = rivus_cep_sup:start_link().
+    {ok, _} = rivus_cep_sup:start_link().
  
 stop(_State) ->
     ok.

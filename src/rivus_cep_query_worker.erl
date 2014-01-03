@@ -16,17 +16,13 @@
 %%------------------------------------------------------------------------------
 
 -module(rivus_cep_query_worker).
-
 -behaviour(gen_server).
-
--include_lib("eunit/include/eunit.hrl").
+-compile([{parse_transform, lager_transform}]).
 -include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--compile([{parse_transform, lager_transform}]).
-
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, code_change/3, terminate/2]).
--export([start_link/4, send_result/1]).
+-export([start_link/1, send_result/1]).
 
 -record(query_ast,{
 	  select,
@@ -50,8 +46,23 @@
 
 %%% API functions
 
-start_link(QueryName, QueryStr, Producers, Subscribers) ->
+start_link([QueryName, QueryStr, Producers, Subscribers]) ->
     gen_server:start_link( {local, QueryName}, ?MODULE, [QueryName, QueryStr, Producers, Subscribers, #state{}], []).
+
+
+%%  Supervisor rivus_cep_sup had child rivus_cep started with rivus_cep:start_link(<0.252.0>) at <0.253.0> exit with reason no match of right hand value
+%% {error,{'EXIT',{undef,
+
+%% 		[{rivus_cep_query_worker,
+%% 		  start_link,
+%% 		  [query_worker_test_1,"define correlation1 as\n
+%%                                       select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2\n
+%%                                       from event1 as ev1, event2 as ev2\n
+%%                                        where ev1.eventparam2 = ev2.eventparam2\n
+%%                                        within 60 seconds; ",
+%% 		   [test_query_1],
+%% 		   [<0.255.0>]],
+%% 		  []},{supervisor,do_start_child_i,3,[{file,"supervisor.erl"},{line,324}]},{supervisor,handle_call,3,[{file,"supe..."},...]},...]}}} in rivus_cep:handle_call/3 line 58 in context child_terminated
 
 init([QueryName, QueryStr, Producers, Subscribers, State]) ->
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),    
@@ -219,7 +230,7 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 terminate(Reason, State) ->
-    ?debugMsg(io_lib:format("Worker stopped. Reason: ~p~n",[Reason])),
+    lager:debug("Worker stopped. Reason: ~p~n",[Reason]),
     ok.
 
 code_change(OldVsn, State, Extra) ->

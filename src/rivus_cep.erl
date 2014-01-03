@@ -18,43 +18,55 @@
 -behaviour(gen_server).
 -compile([{parse_transform, lager_transform}]).
 
--export([start_link/0, load_query/3]).
+-export([start_link/1, load_query/4]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
-
 -define(SERVER, ?MODULE).
 
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+-record(state, {query_sup}).
 
+start_link(Supervisor) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [Supervisor], []).
 
-
-init([]) ->
+init([Supervisor]) ->
+    QuerySupSpec = {query_worker_sup,
+		    {rivus_cep_query_worker_sup, start_link, []},
+		    permanent,
+		    10000,
+		    supervisor,
+		    [rivus_cep_query_worker_sup]},
+    self() ! {start_query_supervisor, Supervisor, QuerySupSpec},
     lager:info("--- Rivus CEP server started"),
-    {ok, ok}.
+    {ok, #state{}}.
 
 
 %%--------------------------------------------------------------------
 %% API functions
 %%--------------------------------------------------------------------
-load_query(Query, Producers, Subscribers) ->
-    gen_server:call(?SERVER, {load_query, Producers, Subscribers}).
+load_query(QueryName, QueryStr, Producers, Subscribers) ->
+    gen_server:call(?SERVER, {load_query, [QueryName, QueryStr, Producers, Subscribers]}).
 
 
 %%--------------------------------------------------------------------
 %% gen_server functions
 %%--------------------------------------------------------------------
-handle_call({load_query, Query, Producers, Subscribers}, From, State) ->
-    Res = rivus_cep_compiler:load_query(Query, Producers, Subscribers),
-    {reply, Res, State};
+handle_call({load_query, Args}, From, #state{query_sup=QuerySup} = State) ->
+    %% Res = rivus_cep_compiler:load_query(Query, Producers, Subscribers),
+
+    {ok, Pid} = supervisor:start_child(QuerySup, [Args]),
+    {reply, {ok,Pid}, State};
 handle_call(Msg, From, State) ->
     {reply, not_handled, State}.
 
 handle_cast(_Msg, State) -> 
     {noreply, State}.
 
+handle_info({start_query_supervisor, Supervisor, QuerySupSpec}, State) ->
+    {ok, Pid} = supervisor:start_child(Supervisor, QuerySupSpec),
+    link(Pid),
+    {noreply, State#state{query_sup=Pid}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
