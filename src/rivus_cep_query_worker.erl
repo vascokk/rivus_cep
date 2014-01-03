@@ -55,8 +55,6 @@ start_link(QueryName, QueryStr, Producers, Subscribers) ->
 
 init([QueryName, QueryStr, Producers, Subscribers, State]) ->
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),    
-
-    %%StmtClauses = rivus_cep_parser:parse(Tokens),
     
     {ok, [StmtName, {SelectClause}, FromClause, {WhereClause}, {WithinClause}]} = rivus_cep_parser:parse(Tokens),
 
