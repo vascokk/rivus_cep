@@ -41,7 +41,7 @@
 	  events = [] ,
 	  timeout = 60,
 	  query_ast,
-	  output = []
+	  window
 }).
 
 %%% API functions
@@ -55,24 +55,30 @@ init([QueryName, QueryStr, Producers, Subscribers, State]) ->
     {ok, [StmtName, {SelectClause}, FromClause, {WhereClause}, {WithinClause}]} = rivus_cep_parser:parse(Tokens),
 
     {QueryType, Events} = case FromClause of
-                                   {pattern, {Events}} -> rivus_cep_window:new( QueryName, slide, WithinClause ),
-							  {pattern, Events};
+                                   {pattern, {Events}} -> {pattern, Events};
                                    {Events} -> {simple, Events}
                                end,
     
     Ast = #query_ast{select=SelectClause, from= FromClause, where=WhereClause, within=WithinClause},
     
-    rivus_cep_window:new(QueryName, slide, WithinClause ),
+    Window = rivus_cep_window:new(WithinClause),
     [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events],
     [ gproc:reg({p, l, {any, Event }}) || Event <- Events],
 
     lager:debug("~nStarting: ~p, PID: ~p ~n",[QueryName, self()]),
-    {ok, #state{query_name = QueryName, query_type = QueryType, producers = Producers, subscribers = Subscribers,
-		events = Events, query_ast = Ast, fsm_state = hd(Events),
+
+    {ok, #state{query_name = QueryName,
+		query_type = QueryType,
+		window = Window,
+		producers = Producers,
+		subscribers = Subscribers,
+		events = Events,
+		query_ast = Ast,
+		fsm_state = hd(Events),
 		fsm_states = lists:zip(Events, lists:seq(1,length(Events)))}}.
 
 send_result(State) ->
-    {Reservoir, Oldest} = rivus_cep_window:get_window( State#state.query_name ),
+    {Reservoir, Oldest} = rivus_cep_window:get_window( State#state.window ),
     MatchSpecs = [create_match_spec(Event, Oldest) || Event<- State#state.events],
     QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
 
@@ -171,19 +177,18 @@ is_correct_state(EventName, #state{fsm_state = FsmState, fsm_states = _FsmStates
        true  -> false
     end.
 
-next_state(#state{fsm_state = FsmState, fsm_states = _FsmStates} = State) ->
+next_state(#state{fsm_state = FsmState, fsm_states = _FsmStates, window = Window} = State) ->
     {_, FsmStateNo} = lists:keyfind(FsmState, 1, _FsmStates), 
     Len = length(_FsmStates),
-    {NextFsmState, _} = case FsmStateNo of
+    {{NextFsmState, _}, NewWindow} = case FsmStateNo of
 			    Len -> send_result(State),
-				   new_window(State),
-				   hd(_FsmStates);
-			    _ ->  lists:nth(FsmStateNo+1, _FsmStates)
+				   {hd(_FsmStates), new_window(State)};
+			    _ ->  {lists:nth(FsmStateNo+1, _FsmStates), Window}
 			end,
-    State#state{fsm_state = NextFsmState}.
+    State#state{fsm_state = NextFsmState, window = NewWindow}.
 
 new_window(#state{timeout = Timeout, query_name = QueryName} = State) ->
-    rivus_cep_window:new( QueryName, slide, Timeout ).
+    rivus_cep_window:new( Timeout ).
 
 handle_call(stop, From, State) ->
     {stop, normal, ok, State};	
@@ -198,17 +203,17 @@ handle_cast(Msg, State) ->
 
 handle_info({ EventName , Event}, #state{query_type = QueryType} = State) when QueryType == simple->
     lager:debug("handle_info, query_type: simple,  Event: ~p",[Event]),
-    rivus_cep_window:update(State#state.query_name, Event),
+    rivus_cep_window:update(State#state.window, Event),
     send_result(State),
     {noreply, State};
 handle_info({ EventName , Event}, #state{fsm_states = _FsmStates, query_type = QueryType} = State) when QueryType == pattern ->
     lager:debug("handle_info, query_type: pattern, EventName: ~p,  Event: ~p",[EventName,Event]),
-    case is_correct_state(EventName, State) of
-	true -> rivus_cep_window:update(State#state.query_name, Event),
-		NewState = next_state(State);
-	false -> new_window(State),
-		 NewState = State#state{fsm_state = element(1,hd(_FsmStates))}
-    end,
+    NewState = case is_correct_state(EventName, State) of
+		   true -> rivus_cep_window:update(State#state.window, Event),
+			   next_state(State);
+		   false -> State#state{fsm_state = element(1,hd(_FsmStates)),
+					window = new_window(State)}
+	       end,
     {noreply, NewState}; 
 handle_info(Info, State) ->
     lager:debug("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ State#state.query_name ,Info]),
