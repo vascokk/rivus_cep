@@ -1,32 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
+
   <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Rivus CEP by vascokk</title>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Rivus CEP : Complex event processing in Erlang" />
 
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <script src="javascripts/scale.fix.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+    <title>Rivus CEP</title>
   </head>
+
   <body>
-    <div class="wrapper">
-      <header>
-        <h1>Rivus CEP</h1>
-        <p>Complex event processing in Erlang</p>
-        <p class="view"><a href="https://github.com/vascokk/rivus_cep">View the Project on GitHub <small>vascokk/rivus_cep</small></a></p>
-        <ul>
-          <li><a href="https://github.com/vascokk/rivus_cep/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/vascokk/rivus_cep/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/vascokk/rivus_cep">View On <strong>GitHub</strong></a></li>
-        </ul>
-      </header>
-      <section>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/vascokk/rivus_cep">View on GitHub</a>
+
+          <h1 id="project_title">Rivus CEP</h1>
+          <h2 id="project_tagline">Complex event processing in Erlang</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/vascokk/rivus_cep/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/vascokk/rivus_cep/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
         <p><a href="https://travis-ci.org/vascokk/rivus_cep"><img src="https://travis-ci.org/vascokk/rivus_cep.png" alt="Build Status"></a></p>
 
 <h1>
@@ -71,7 +75,7 @@ within 60 seconds
 <span class="nv">Producer</span> <span class="o">=</span> <span class="n">event_producer_1</span><span class="p">,</span>
 <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">SubscriberPid</span><span class="p">}</span> <span class="o">=</span> <span class="nn">result_subscriber</span><span class="p">:</span><span class="nf">start_link</span><span class="p">(),</span> 
 
-<span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">QueryPid</span><span class="p">}</span> <span class="o">=</span> <span class="nn">rivus_cep</span><span class="p">:</span><span class="nf">load_query</span><span class="p">(</span><span class="n">test_query</span><span class="p">,</span> <span class="nv">QueryStr</span><span class="p">,</span> <span class="p">[</span><span class="nv">Producer</span><span class="p">],</span> <span class="p">[</span><span class="nv">SubscriberPid</span><span class="p">]),</span>
+<span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">QueryPid</span><span class="p">}</span> <span class="o">=</span> <span class="nn">rivus_cep</span><span class="p">:</span><span class="nf">load_query</span><span class="p">(</span><span class="nv">QueryStr</span><span class="p">,</span> <span class="p">[</span><span class="nv">Producer</span><span class="p">],</span> <span class="p">[</span><span class="nv">SubscriberPid</span><span class="p">],</span> <span class="p">[{</span><span class="n">shared_streams</span><span class="p">,</span> <span class="n">true</span><span class="p">}]),</span>
 
 <span class="c">%% create some evetnts</span>
 <span class="nv">Event1</span> <span class="o">=</span> <span class="p">{</span><span class="n">event1</span><span class="p">,</span> <span class="n">gr1</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="mi">10</span><span class="p">},</span> 
@@ -87,7 +91,7 @@ within 60 seconds
 
 </pre></div>
 
-<p>The query is started with <code>rivus_cep:load_query/4</code>. It takes as arguments: query name, query string, list of event producers and list of query result subscribers.</p>
+<p>The query is started with <code>rivus_cep:load_query/4</code>. It takes as arguments: query string, list of event producers, list of query result subscribers and options as a proplist.</p>
 
 <p>Each query worker will register itself to the  <a href="https://github.com/uwiger/gproc">gproc</a> process registry, for the events listed in the "from" clause.</p>
 
@@ -100,6 +104,11 @@ within 60 seconds
 <p>Internally, the events are stored in an ETS-based sliding window. DSL statments are translated to Erlang "match specifications" and QLC queries.</p>
 
 <p>For each event type there must be a module implementing the <code>event_behavior</code> with the same name used in the "from" clause. The important function that needs to be implemented is - <code>get_param_by_name(Event, ParamName)</code>. </p>
+
+<p>For memory efficiency, <code>{shared_streams, true}</code> can be provided in the options list. In this case, the query will work with a shared event sliding window. The window's size will be equal of the maximum "within" clause of all sharing queries.
+Queries based on event pattern use only non-shared windows.</p>
+
+<p>Only "strict" event patterns are supported at the moment. This means, for a pattern "event1 -&gt; event2", if some other event is received in between (event1-&gt;other event-&gt;event2), the query won't generate any result.</p>
 
 <p>See some DSL examples in <code>test/rivus_cep_parser_tests.erl</code>.</p>
 
@@ -116,7 +125,6 @@ within 60 seconds
 <p>The project is in its infancy and there is a number of limitations/TODOs:</p>
 
 <ul>
-<li>each query has its own events 'reservoir' (not quite memory efficient)</li>
 <li>more aggregation functions are yet to be implemented;</li>
 <li>using event aliases is mandatory;</li>
 <li>only sliding windows are supported (no 'batch' windows);</li>
@@ -128,11 +136,16 @@ within 60 seconds
 <p>Contributions and suggestions are most appreciated!</p>
       </section>
     </div>
-    <footer>
-      <p>Project maintained by <a href="https://github.com/vascokk">vascokk</a></p>
-      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
-    </footer>
-    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Rivus CEP maintained by <a href="https://github.com/vascokk">vascokk</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
     
+
   </body>
 </html>
