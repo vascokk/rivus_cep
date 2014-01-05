@@ -84,8 +84,12 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
-handle_call({load_query, [QueryStr, Producers, Subscribers, Options]}, From, #state{query_sup=QuerySup, win_register = WinReg} = State) ->
+handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, From, #state{query_sup=QuerySup, win_register = WinReg} = State) ->
     QueryClauses = parse_query(QueryStr),
+    Producers = case _Producers of
+	[] -> [any];
+	_ -> _Producers
+    end,
     {QueryWindow, NewWinReg} = register_windows(QueryClauses, Producers, Options, WinReg),
     QueryModArgs = {QueryClauses, Producers, Subscribers, Options, QueryWindow, NewWinReg},
     

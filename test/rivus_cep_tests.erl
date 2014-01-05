@@ -25,7 +25,9 @@ query_worker_test_() ->
       {"Test query with aggregation",
        fun load_query_2/0},
       {"Tes query on event sequence (event pattern matching)",
-       fun load_pattern/0}
+       fun load_pattern/0},
+       {"Tes query without producers",
+       fun load_query_no_producers/0}
      ]
     }.
 
@@ -146,6 +148,37 @@ load_pattern() ->
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
+
+load_query_no_producers() ->
+    {ok,Pid} = result_subscriber:start_link(),
+
+    QueryStr = "define noproducers_query as
+                     select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
+                     from event1 as ev1, event2 as ev2
+                     where ev1.eventparam2 = ev2.eventparam2
+                     within 60 seconds; ",
+    
+    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [any], [Pid], []),
+    
+    Event1 = {event1, 10,b,c}, 
+    Event2 = {event1, 15,bbb,c},
+    Event3 = {event1, 20,b,c},
+    Event4 = {event2, 30,b,cc,d},
+    Event5 = {event2, 40,bb,cc,dd},
+
+    rivus_cep:notify(Event1),
+    rivus_cep:notify(Event2),
+    rivus_cep:notify(Event3),
+    rivus_cep:notify(Event4),
+    rivus_cep:notify(Event5),
+
+    timer:sleep(2000),
+    
+    {ok,Values} = gen_server:call(Pid, get_result),
+    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    ?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    gen_server:call(QueryPid,stop),
+    gen_server:call(Pid,stop).
 
 shared_streams_1() ->
     {ok,Pid} = result_subscriber:start_link(),

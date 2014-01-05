@@ -33,29 +33,29 @@ In the second query, the result will be generated only in case when event2 stric
 Here is how to use it:
 
 ``` erlang
-application:start(rivus_cep)
+application:start(rivus_cep).
 
 QueryStr = "define correlation2 as
                   select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
                   from event1 as ev1, event2 as ev2
                    where ev1.eventparam2 = ev2.eventparam2
-                    within 60 seconds; "
+                    within 60 seconds; ".
 
-Producer = event_producer_1,
-{ok, SubscriberPid} = result_subscriber:start_link(), 
+Producer = event_producer_1.
+{ok, SubscriberPid} = result_subscriber:start_link().
 
-{ok, QueryPid} = rivus_cep:load_query(QueryStr, [Producer], [SubscriberPid], [{shared_streams, true}]),
+{ok, QueryPid} = rivus_cep:load_query(QueryStr, [Producer], [SubscriberPid], [{shared_streams, true}]).
     
 %% create some evetnts
-Event1 = {event1, gr1,b,10}, 
-Event2 = {event2, gr2,bbb,20},
+Event1 = {event1, gr1,b,10}.
+Event2 = {event2, gr2,bbb,20}.
 
 %% send the events
-rivus_cep:notify(Producer, Event1),
+rivus_cep:notify(Producer, Event1).
 rivus_cep:notify(Producer, Event2).
 
 %% or if you don't care about the producers
-rivus_cep:notify(Event1),
+rivus_cep:notify(Event1).
 rivus_cep:notify(Event2).
 	
 ```

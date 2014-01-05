@@ -61,10 +61,8 @@ init([QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg])
     Ast = #query_ast{select=SelectClause, from= FromClause, where=WhereClause, within=WithinClause},
 
     case QueryWindow of
-    	global -> [ gproc:reg({p, l, {Producer, Event, global }}) || Producer<-Producers, Event <- Events],
-		  [ gproc:reg({p, l, {any, Event , global }}) || Event <- Events];
-    	_ -> [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events],
-    	     [ gproc:reg({p, l, {any, Event }}) || Event <- Events]
+    	global -> [ gproc:reg({p, l, {Producer, Event, global }}) || Producer<-Producers, Event <- Events];
+    	_ -> [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events]
     end,
     
 
