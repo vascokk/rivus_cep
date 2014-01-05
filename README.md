@@ -85,7 +85,7 @@ See some DSL examples in `test/rivus_cep_parser_tests.erl`.
 
 - [gproc](https://github.com/uwiger/gproc)
 - [folsom](https://github.com/boundary/folsom)
-- [lager](https://github.com/basho/lager)
+- [lager](https://github.com/basho/lager) 
 
 ###Current limitations
 

@@ -43,12 +43,10 @@ shared_streams_test_() ->
 		application:stop(rivus_cep)
      end,
 
-     [{"Test query without aggregations",
-       fun shared_streams_1/0}%% ,
-      %% {"Test query with aggregation",
-      %%  fun load_query_2/0},
-      %% {"Tes query on event sequence (event pattern matching)",
-      %%  fun load_pattern/0}
+     [{"Test shared streams query without aggregations",
+        fun shared_streams_1/0},
+      {"Test shared streams query with aggregation",
+        fun shared_streams_2/0}
      ]
     }.
 
@@ -160,11 +158,11 @@ shared_streams_1() ->
     
     {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_sharedstreams_1], [Pid], [{shared_streams,true}]),
     
-    Event1 = {event1, 10,b,c}, 
-    Event2 = {event1, 15,bbb,c},
-    Event3 = {event1, 20,b,c},
-    Event4 = {event2, 30,b,cc,d},
-    Event5 = {event2, 40,bb,cc,dd},
+    Event1 = {event1, 10,b,10}, 
+    Event2 = {event1, 15,bbb,20},
+    Event3 = {event1, 20,b,30},
+    Event4 = {event2, 30,b,50,d},
+    Event5 = {event2, 40,bb,100,dd},
 
     rivus_cep:notify(test_sharedstreams_1, Event1),
     rivus_cep:notify(test_sharedstreams_1, Event2),
@@ -176,6 +174,39 @@ shared_streams_1() ->
     
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
-    ?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    ?assertEqual([{10,b,50,b},{20,b,50,b}], Values),
+    gen_server:call(QueryPid,stop),
+    gen_server:call(Pid,stop).
+
+shared_streams_2() ->
+    {ok, Pid} = result_subscriber:start_link(),
+    
+    QueryStr = "define sharedstreams2 as
+                  select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
+                  from event1 as ev1, event2 as ev2
+                   where ev1.eventparam2 = ev2.eventparam2
+                    within 60 seconds; ",
+    
+    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_sharedstreams_2], [Pid], [{shared_streams,true}]),
+    
+    %% send some events
+    Event1 = {event1, gr1,b,10}, 
+    Event2 = {event1, gr2,bbb,20},
+    Event3 = {event1, gr3,b,30},
+    Event4 = {event2, gr1,b,40,d},
+    Event5 = {event2, gr2,bb,50,dd},
+    Event6 = {event2, gr3,b,40,d},
+
+    rivus_cep:notify(test_sharedstreams_2, Event1),
+    rivus_cep:notify(test_sharedstreams_2, Event2),
+    rivus_cep:notify(test_sharedstreams_2, Event3),
+    rivus_cep:notify(test_sharedstreams_2, Event4),
+    rivus_cep:notify(test_sharedstreams_2, Event5),
+    rivus_cep:notify(test_sharedstreams_2, Event6),
+
+    timer:sleep(2000),
+    {ok,Values} = gen_server:call(Pid, get_result),
+    %%result will includes the events generated in the previous test 
+    ?assertEqual([{20,b,130},{10,b,130},{gr1,b,130},{gr3,b,130}], Values), 
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
