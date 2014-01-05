@@ -41,35 +41,40 @@
 	  events = [] ,
 	  timeout = 60,
 	  query_ast,
-	  window
+	  window,
+	  win_register
 }).
 
 %%% API functions
 
-start_link([QueryName, QueryStr, Producers, Subscribers]) ->
-    gen_server:start_link( {local, QueryName}, ?MODULE, [QueryName, QueryStr, Producers, Subscribers, #state{}], []).
+start_link({QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg}) ->
+    {QueryName} = hd(QueryClauses),
+    gen_server:start_link( {local, QueryName}, ?MODULE, [QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg], []).
 
-init([QueryName, QueryStr, Producers, Subscribers, State]) ->
-    {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),    
-    
-    {ok, [StmtName, {SelectClause}, FromClause, {WhereClause}, {WithinClause}]} = rivus_cep_parser:parse(Tokens),
-
+init([QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg]) ->
+    [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}] = QueryClauses,
     {QueryType, Events} = case FromClause of
                                    {pattern, {Events}} -> {pattern, Events};
                                    {Events} -> {simple, Events}
                                end,
-    
+   
     Ast = #query_ast{select=SelectClause, from= FromClause, where=WhereClause, within=WithinClause},
-    
-    Window = rivus_cep_window:new(WithinClause),
-    [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events],
-    [ gproc:reg({p, l, {any, Event }}) || Event <- Events],
 
-    lager:debug("~nStarting: ~p, PID: ~p ~n",[QueryName, self()]),
+    case QueryWindow of
+    	global -> [ gproc:reg({p, l, {Producer, Event, global }}) || Producer<-Producers, Event <- Events],
+		  [ gproc:reg({p, l, {any, Event , global }}) || Event <- Events];
+    	_ -> [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events],
+    	     [ gproc:reg({p, l, {any, Event }}) || Event <- Events]
+    end,
+    
+
+    
+    lager:debug("~nStarting: ~p, PID: ~p, Query window: ~p, GlobalWinRegister: ~p ~n",[QueryName, self(), QueryWindow, GlobalWinReg]),
 
     {ok, #state{query_name = QueryName,
 		query_type = QueryType,
-		window = Window,
+		window = QueryWindow,
+		win_register =  GlobalWinReg,
 		producers = Producers,
 		subscribers = Subscribers,
 		events = Events,
@@ -77,9 +82,49 @@ init([QueryName, QueryStr, Producers, Subscribers, State]) ->
 		fsm_state = hd(Events),
 		fsm_states = lists:zip(Events, lists:seq(1,length(Events)))}}.
 
-send_result(State) ->
-    {Reservoir, Oldest} = rivus_cep_window:get_window( State#state.window ),
-    MatchSpecs = [create_match_spec(Event, Oldest) || Event<- State#state.events],
+create_qh_ss(Event, WinReg) ->
+    Window = dict:fetch(Event, WinReg),
+    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
+    MatchSpec = create_match_spec(Event, Oldest),
+    create_qh(MatchSpec, Reservoir).
+
+send_result(#state{events=Events, win_register=WinReg, query_ast = Ast, window = Window} = State) when Window == global ->    
+    QueryHandlers = lists:map(fun(Event) ->  create_qh_ss(Event, WinReg) end, Events),
+    
+    PreResultSet = [qlc:e(QH) || QH <- QueryHandlers ],    
+ 
+    lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
+
+    CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], PreResultSet),
+
+    lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
+
+    WhereClause = Ast#query_ast.where,
+    SelectClause = Ast#query_ast.select,
+    
+    FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(WhereClause, ResRecord) ],
+    
+    lager:debug("---> Filtered Result: ~p", [FilteredRes]),
+
+    ResultSet = [list_to_tuple(build_select_clause(SelectClause, ResRecord,  [])) || ResRecord <-FilteredRes],
+
+    lager:debug("---> ResultSet: ~p", [ResultSet]),
+    
+    case ResultSet of
+    	[] -> nil;
+    	_ -> FirstRec = hd(ResultSet),
+	     Key = rivus_cep_aggregation:get_group_key(FirstRec),
+	     %%naive check for aggregations in the select clause:
+	     Result = case length(tuple_to_list(FirstRec)) == length(tuple_to_list(Key)) of
+			  true -> ResultSet; %% no aggregations in the 'select' stmt
+			  false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
+		      end,
+	     lager:debug("---> Result: ~p <-----", [Result]),
+	     [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#state.subscribers]
+    end;
+send_result(#state{events=Events, window = Window, query_ast = Ast} = State) when Window /= global->
+    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
+    MatchSpecs = [create_match_spec(Event, Oldest) || Event<- Events],
     QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
 
     PreResultSet = [qlc:e(QH) || QH <- QueryHandlers ],    
@@ -90,8 +135,8 @@ send_result(State) ->
 
     lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
 
-    WhereClause = (State#state.query_ast)#query_ast.where,
-    SelectClause = (State#state.query_ast)#query_ast.select,
+    WhereClause = Ast#query_ast.where,
+    SelectClause = Ast#query_ast.select,
     
     FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(WhereClause, ResRecord) ],
     
@@ -187,8 +232,8 @@ next_state(#state{fsm_state = FsmState, fsm_states = _FsmStates, window = Window
 			end,
     State#state{fsm_state = NextFsmState, window = NewWindow}.
 
-new_window(#state{timeout = Timeout, query_name = QueryName} = State) ->
-    rivus_cep_window:new( Timeout ).
+new_window(#state{timeout = Timeout}) ->
+    rivus_cep_window:new(Timeout).
 
 handle_call(stop, From, State) ->
     {stop, normal, ok, State};	
@@ -201,9 +246,13 @@ handle_cast(Msg, State) ->
 
 
 
-handle_info({ EventName , Event}, #state{query_type = QueryType} = State) when QueryType == simple->
+handle_info({ EventName , Event}, #state{query_type = QueryType, window = Window} = State) when QueryType == simple->
     lager:debug("handle_info, query_type: simple,  Event: ~p",[Event]),
-    rivus_cep_window:update(State#state.window, Event),
+
+    case Window of
+	global -> ok;
+	_ -> rivus_cep_window:update(Window, Event)		
+    end,
     send_result(State),
     {noreply, State};
 handle_info({ EventName , Event}, #state{fsm_states = _FsmStates, query_type = QueryType} = State) when QueryType == pattern ->

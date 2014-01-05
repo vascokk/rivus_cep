@@ -25,10 +25,10 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {query_sup}).
+-include_lib("../deps/folsom/include/folsom.hrl").
 
-
-
+-record(state, {query_sup,
+	        win_register = dict:new()}).
 
 %%--------------------------------------------------------------------
 %% API functions
@@ -36,8 +36,8 @@
 start_link(Supervisor) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [Supervisor], []).
 
-load_query(QueryName, QueryStr, Producers, Subscribers) ->
-    gen_server:call(?SERVER, {load_query, [QueryName, QueryStr, Producers, Subscribers]}).
+load_query(QueryStr, Producers, Subscribers, Options) ->
+    gen_server:call(?SERVER, {load_query, [QueryStr, Producers, Subscribers, Options]}).
 
 notify(Event) ->
     notify(any, Event).
@@ -63,22 +63,45 @@ init([Supervisor]) ->
     lager:info("--- Rivus CEP server started"),
     {ok, #state{}}.
 
+
+
 %%--------------------------------------------------------------------
 %% gen_server functions
 %%--------------------------------------------------------------------
 
-handle_cast({notify, Producer, Event}, State) ->
-    gproc:send({p, l, {Producer, element(1, Event)}}, {element(1, Event), Event}),
+handle_cast({notify, Producer, Event}, #state{win_register = WinReg} = State) ->
+    EventName = element(1, Event),
+    gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
+    case dict:is_key(EventName, WinReg) of
+	true -> Window = dict:fetch(EventName, WinReg),
+		lager:debug("Updating global window: ~p~n",[Window]),
+		rivus_cep_window:update(Window, Event),
+		gproc:send({p, l, {Producer, EventName, global}}, {EventName, Event});
+	false -> ok
+    end,        
     {noreply, State};
 handle_cast(_Msg, State) -> 
     {noreply, State}.
 
 
-handle_call({load_query, Args}, From, #state{query_sup=QuerySup} = State) ->
-    {ok, Pid} = supervisor:start_child(QuerySup, [Args]),
-    {reply, {ok,Pid}, State};
-handle_call({notify, Producer, Event}, From, State) ->
-    gproc:send({p, l, {Producer, element(1, Event)}}, {element(1, Event), Event}),
+handle_call({load_query, [QueryStr, Producers, Subscribers, Options]}, From, #state{query_sup=QuerySup, win_register = WinReg} = State) ->
+    QueryClauses = parse_query(QueryStr),
+    {QueryWindow, NewWinReg} = register_windows(QueryClauses, Producers, Options, WinReg),
+    QueryModArgs = {QueryClauses, Producers, Subscribers, Options, QueryWindow, NewWinReg},
+    
+    lager:debug("Query sup, Args: ~p~n",[QueryModArgs]),
+    
+    {ok, Pid} = supervisor:start_child(QuerySup, [QueryModArgs]),
+    {reply, {ok,Pid}, State#state{win_register=NewWinReg}};
+handle_call({notify, Producer, Event}, From, #state{win_register = WinReg} = State) ->
+    EventName = element(1, Event),
+    gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
+    case dict:is_key(EventName, WinReg) of
+	true -> Window = dict:fetch(EventName, WinReg),
+		rivus_cep_window:update(Window, Event),
+		gproc:send({p, l, {Producer, EventName, global}}, {eventName, Event});
+	false -> ok
+    end,    
     {reply, ok, State};
 handle_call(Msg, From, State) ->
     {reply, not_handled, State}.
@@ -95,3 +118,49 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%%--------------------------------------------------------------------
+%% Internal functions
+%%--------------------------------------------------------------------
+parse_query(QueryStr) ->    
+    {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
+    {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),
+    QueryClauses.
+
+register_windows([StmtName, {SelectClause}, FromClause, {WhereClause}, {WithinClause}], Producers, Options, WinReg) ->
+    {QueryType, Events} = case FromClause of
+			      {pattern, {Events}} -> {pattern, Events};
+			      {Events} -> {simple, Events}
+			  end,    
+    SharedStreams = proplists:get_value(shared_streams, Options, false),
+    QueryWindow = case {QueryType, SharedStreams} of
+		      {pattern,_} -> register_local_window(WithinClause, WinReg);
+		      {simple, true} -> register_global_windows(Events, Producers, WithinClause, WinReg);
+		      _ -> register_local_window(WithinClause, WinReg)
+		  end.
+    
+register_local_window(WithinClause, WinReg) ->
+    {rivus_cep_window:new(WithinClause), WinReg}.
+
+register_global_windows(Events, Producers, WithinClause, WinReg) ->
+    NewWinReg = lists:foldl(fun(Event, Register) -> case dict:is_key(Event, Register) of
+							true -> maybe_update_window_size(Event, Register, WithinClause);
+							false -> create_new_global_window(Event, Register, WithinClause)
+						    end
+			    end, WinReg, Events),
+    lager:debug("Windows Register: ~p~n",[NewWinReg]),
+    {global, NewWinReg}.
+
+maybe_update_window_size(Event, WinReg, WithinClause) ->
+    Window = dict:fetch(Event, WinReg),
+    Size = Window#slide.window,
+    case Size < WithinClause of
+	true -> NewWindow = rivus_cep_window:resize(Window, WithinClause),
+		dict:store(Event, NewWindow, WinReg);
+	false -> WinReg
+    end.
+	     
+    
+create_new_global_window(Event, WinReg, WithinClause) ->
+    Window = rivus_cep_window:new(WithinClause),
+    dict:store(Event, Window, WinReg).

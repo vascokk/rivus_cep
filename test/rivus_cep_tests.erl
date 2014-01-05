@@ -25,7 +25,31 @@ query_worker_test_() ->
       {"Test query with aggregation",
        fun load_query_2/0},
       {"Tes query on event sequence (event pattern matching)",
-       fun load_pattern/0}]
+       fun load_pattern/0}
+     ]
+    }.
+
+shared_streams_test_() ->
+    {setup,
+     fun () -> folsom:start(),
+	       lager:start(),
+	       application:start(gproc),
+	       lager:set_loglevel(lager_console_backend, debug),
+	       application:start(rivus_cep)
+     end,
+     fun (_) -> folsom:stop(),
+		application:stop(lager),
+		application:stop(gproc),
+		application:stop(rivus_cep)
+     end,
+
+     [{"Test query without aggregations",
+       fun shared_streams_1/0}%% ,
+      %% {"Test query with aggregation",
+      %%  fun load_query_2/0},
+      %% {"Tes query on event sequence (event pattern matching)",
+      %%  fun load_pattern/0}
+     ]
     }.
 
 load_query_1() ->
@@ -37,7 +61,7 @@ load_query_1() ->
                      where ev1.eventparam2 = ev2.eventparam2
                      within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(query_worker_test_1, QueryStr, [test_query_1], [Pid]),
+    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_query_1], [Pid], []),
     
     Event1 = {event1, 10,b,c}, 
     Event2 = {event1, 15,bbb,c},
@@ -68,7 +92,7 @@ load_query_2() ->
                    where ev1.eventparam2 = ev2.eventparam2
                     within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(query_worker_test_2, QueryStr, [test_query_2], [Pid]),
+    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_query_2], [Pid], []),
     
     %% send some events
     Event1 = {event1, gr1,b,10}, 
@@ -102,7 +126,7 @@ load_pattern() ->
                       where ev1.eventparam2 = ev2.eventparam2
                       within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(query_worker_test_3, QueryStr, [test_pattern_1], [Pid]),
+    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_pattern_1], [Pid], []),
     
     Event1 = {event1, 10,b,10}, 
     Event2 = {event1, 15,bbb,20},
@@ -121,5 +145,37 @@ load_pattern() ->
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     ?assertEqual([{20,b,100,20}], Values),
+    gen_server:call(QueryPid,stop),
+    gen_server:call(Pid,stop).
+
+
+shared_streams_1() ->
+    {ok,Pid} = result_subscriber:start_link(),
+
+    QueryStr = "define sharedstreams1 as
+                     select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
+                     from event1 as ev1, event2 as ev2
+                     where ev1.eventparam2 = ev2.eventparam2
+                     within 60 seconds; ",
+    
+    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_sharedstreams_1], [Pid], [{shared_streams,true}]),
+    
+    Event1 = {event1, 10,b,c}, 
+    Event2 = {event1, 15,bbb,c},
+    Event3 = {event1, 20,b,c},
+    Event4 = {event2, 30,b,cc,d},
+    Event5 = {event2, 40,bb,cc,dd},
+
+    rivus_cep:notify(test_sharedstreams_1, Event1),
+    rivus_cep:notify(test_sharedstreams_1, Event2),
+    rivus_cep:notify(test_sharedstreams_1, Event3),
+    rivus_cep:notify(test_sharedstreams_1, Event4),
+    rivus_cep:notify(test_sharedstreams_1, Event5),
+
+    timer:sleep(2000),
+    
+    {ok,Values} = gen_server:call(Pid, get_result),
+    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    ?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).

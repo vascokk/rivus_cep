@@ -67,7 +67,7 @@ select() ->
      ?assertEqual([{event1, a,b,c}, {event1, a,bbb,c}], rivus_cep_window:select(Window, "blah")).
     
 select_outside() ->
-    Window = rivus_cep_window:new(2, slide),
+    Window = rivus_cep_window:new(2),
     rivus_cep_window:update(Window, {event1, a,b,c}),
     rivus_cep_window:update(Window, {event1, aa,b,c}),
     rivus_cep_window:update(Window, {event1, a,bbb,c}),

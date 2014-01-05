@@ -33,8 +33,10 @@ query_1() ->
                      from event1 as ev1, event2 as ev2
                      where ev1.eventparam2 = ev2.eventparam2
                      within 60 seconds; ",
-    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link([query_worker_test_1, QueryStr, [test_query_1], [Pid]]),
+    Window = rivus_cep_window:new(60),
+    {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
+    {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
+    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_1], [Pid], [], Window, nil}),
     
     Event1 = {event1, 10,b,c}, 
     Event2 = {event1, 15,bbb,c},
@@ -64,8 +66,11 @@ query_2()->
                   from event1 as ev1, event2 as ev2
                    where ev1.eventparam2 = ev2.eventparam2
                     within 60 seconds; ",
-    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link([query_worker_test_2, QueryStr, [test_query_2], [Pid]]),
+    Window = rivus_cep_window:new(60),
+
+    {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
+    {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
+    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_2], [Pid], [], Window, nil}),
     
     %% send some events
     Event1 = {event1, gr1,b,10}, 
@@ -98,8 +103,12 @@ pattern() ->
                       from event1 as ev1 -> event2 as ev2
                       where ev1.eventparam2 = ev2.eventparam2
                       within 60 seconds; ",
-    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link([query_worker_test_3, QueryStr, [test_pattern_1], [Pid]]),
+    Window = rivus_cep_window:new(60),
+
+    {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
+    {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
+    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_pattern_1], [Pid], [], Window, nil}),
+   
     Event1 = {event1, 10,b,10}, 
     Event2 = {event1, 15,bbb,20},
     Event3 = {event1, 20,b,10},

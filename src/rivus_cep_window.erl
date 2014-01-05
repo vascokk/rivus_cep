@@ -44,6 +44,9 @@ update(Sample, Value) ->
 get_values(Sample) ->
     folsom_sample_slide:get_values(Sample).
 
+resize(Sample, NewSize) ->
+    folsom_sample_slide:resize(Sample, NewSize).
+
 %%just for testing
 select(Sample, "blah") ->
     Size = Sample#slide.window,
