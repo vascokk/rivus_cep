@@ -44,7 +44,7 @@ QueryStr = "define correlation2 as
 Producer = event_producer_1,
 {ok, SubscriberPid} = result_subscriber:start_link(), 
 
-{ok, QueryPid} = rivus_cep:load_query(test_query, QueryStr, [Producer], [SubscriberPid]),
+{ok, QueryPid} = rivus_cep:load_query(QueryStr, [Producer], [SubscriberPid], [{shared_streams, true}]),
     
 %% create some evetnts
 Event1 = {event1, gr1,b,10}, 
@@ -60,7 +60,7 @@ rivus_cep:notify(Event2).
 	
 ```
 
-The query is started with `rivus_cep:load_query/4`. It takes as arguments: query name, query string, list of event producers and list of query result subscribers.
+The query is started with `rivus_cep:load_query/4`. It takes as arguments: query string, list of event producers, list of query result subscribers and options as a proplist.
 
 Each query worker will register itself to the  [gproc](https://github.com/uwiger/gproc) process registry, for the events listed in the "from" clause.
 
@@ -74,6 +74,11 @@ Internally, the events are stored in an ETS-based sliding window. DSL statments 
 
 For each event type there must be a module implementing the `event_behavior` with the same name used in the "from" clause. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`. 
 
+For memory efficiency, `{shared_streams, true}` can be provided in the options list. In this case, the query will work with a shared event sliding window. The window's size will be equal of the maximum "within" clause of all sharing queries.
+Queries based on event pattern use only non-shared windows.
+
+Only "strict" event patterns are supported at the moment. This means, for a pattern "event1 -> event2", if some other event is received in between (event1->other event->event2), the query won't generate any result.
+
 See some DSL examples in `test/rivus_cep_parser_tests.erl`.
 
 ###Dependencies
@@ -86,7 +91,6 @@ See some DSL examples in `test/rivus_cep_parser_tests.erl`.
 
 The project is in its infancy and there is a number of limitations/TODOs:
 
-- each query has its own events 'reservoir' (not quite memory efficient)
 - more aggregation functions are yet to be implemented;
 - using event aliases is mandatory;
 - only sliding windows are supported (no 'batch' windows);
