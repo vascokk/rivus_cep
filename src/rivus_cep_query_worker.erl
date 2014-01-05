@@ -169,7 +169,11 @@ where_eval({Op, Left, Right}, ResRecord) ->
 	'and' -> where_eval(Left, ResRecord) andalso where_eval(Right, ResRecord);
 	'or' -> where_eval(Left, ResRecord) orelse where_eval(Right, ResRecord);
 	eq -> where_eval(Left, ResRecord) ==  where_eval(Right, ResRecord) ;
-	gt -> where_eval(Left, ResRecord) > where_eval(Right, ResRecord); 
+	gt -> where_eval(Left, ResRecord) > where_eval(Right, ResRecord);
+	lt -> where_eval(Left, ResRecord) < where_eval(Right, ResRecord);
+	lte -> where_eval(Left, ResRecord) =< where_eval(Right, ResRecord);
+	gte -> where_eval(Left, ResRecord) >= where_eval(Right, ResRecord);
+	ne -> where_eval(Left, ResRecord) /= where_eval(Right, ResRecord); 
 	plus -> where_eval(Left, ResRecord) + where_eval(Right, ResRecord);
 	minus -> where_eval(Left, ResRecord) - where_eval(Right, ResRecord)
     end;
