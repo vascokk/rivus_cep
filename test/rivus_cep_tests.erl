@@ -13,7 +13,7 @@ query_worker_test_() ->
 	       lager:set_loglevel(lager_console_backend, debug),
 	       ok = application:start(rivus_cep)
      end,
-     fun (_) -> aapplication:stop(lager),
+     fun (_) -> application:stop(lager),
 		application:stop(gproc),
 		application:stop(rivus_cep)
      end,
