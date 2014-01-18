@@ -18,6 +18,21 @@
 			  recno = 1,
 			  aggrno = 1,
 			  aggr_nodes = orddict:new(),
-			  result = dict:new()
-			  
+			  result = dict:new()		  
 	 }).
+
+-record(query_ast,{
+	  select,
+	  from,
+	  where,
+	  within
+	 }).
+
+-record(query_plan, {
+	  join_keys = orddict:new()
+	 }).  %%will be extended later
+
+
+-record(slide,{size,
+	       reservoir = rivus_cep_slide_ets:new(rivus_slide, [duplicate_bag, {write_concurrency, true}, public]),
+	       server}).
