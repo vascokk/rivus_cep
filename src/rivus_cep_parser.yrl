@@ -23,6 +23,7 @@ Left 1000 '*'.
 Left 1100 '/'.
 Left 1200 'and'.
 Unary 1300 uminus.
+Unary 1400 'not'.
 
 uminus -> '-' expression.
 
@@ -89,6 +90,7 @@ expression -> float: {float, value_of('$1')}.
 
 predicates -> predicates 'or' predicates:  {'or','$1','$3'}.
 predicates -> predicates 'and'  predicates:  {'and','$1','$3'}.
+predicates -> 'not' predicate: {neg, '$2'}.
 predicates -> predicate: '$1'.
 predicate -> '(' predicate ')' : '$2'.
 predicate -> expression '=' expression: {'eq','$1','$3'}.

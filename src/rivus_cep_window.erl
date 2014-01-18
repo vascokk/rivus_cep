@@ -20,7 +20,7 @@
 
 -include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("stdlib/include/qlc.hrl").
--include_lib("../deps/folsom/include/folsom.hrl").
+-include("rivus_cep.hrl").
 
 -export([new/1,
          new/2,
@@ -31,32 +31,33 @@
          ]).
 
 new(Size) ->
-    folsom_sample_slide:new(Size).
+    rivus_cep_slide:new(Size).
 
 new(Size, slide) ->
-    folsom_sample_slide:new(Size).
+    rivus_cep_slide:new(Size).
+
 
 update(Sample, Value) ->
-    lager:debug("~nUpdate window:~p~n",[Sample]),
-    folsom_sample_slide:update(Sample, Value).
+    lager:debug("~nUpdate window:~p, Value: ~p~n",[Sample, Value]),
+    rivus_cep_slide:update(Sample, Value).
 
 % pulls the sample out of the record obtained from ets
 get_values(Sample) ->
-    folsom_sample_slide:get_values(Sample).
+    rivus_cep_slide:get_values(Sample).
 
 resize(Sample, NewSize) ->
-    folsom_sample_slide:resize(Sample, NewSize).
+    rivus_cep_slide:resize(Sample, NewSize).
 
 %%just for testing
 select(Sample, "blah") ->
-    Size = Sample#slide.window,
+    Size = Sample#slide.size,
     Reservoir = Sample#slide.reservoir,    
-    Oldest = folsom_sample_slide:moment() - Size,
+    Oldest = rivus_cep_utils:timestamp() - Size,
     ets:select(Reservoir,   ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(2,Value) == a -> Value end)).
 
 get_window(Sample) ->
-    Size = Sample#slide.window,
+    Size = Sample#slide.size,
     Reservoir = Sample#slide.reservoir,    
-    Oldest = folsom_sample_slide:moment() - Size,
+    Oldest = rivus_cep_utils:timestamp() - Size,
     {Reservoir, Oldest}.
 

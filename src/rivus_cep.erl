@@ -25,7 +25,7 @@
 
 -define(SERVER, ?MODULE).
 
--include_lib("../deps/folsom/include/folsom.hrl").
+-include("rivus_cep.hrl").
 
 -record(state, {query_sup,
 	        win_register = dict:new()}).
@@ -157,7 +157,7 @@ register_global_windows(Events, Producers, WithinClause, WinReg) ->
 
 maybe_update_window_size(Event, WinReg, WithinClause) ->
     Window = dict:fetch(Event, WinReg),
-    Size = Window#slide.window,
+    Size = Window#slide.size,
     case Size < WithinClause of
 	true -> NewWindow = rivus_cep_window:resize(Window, WithinClause),
 		dict:store(Event, NewWindow, WinReg);

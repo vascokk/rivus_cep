@@ -7,12 +7,14 @@
 -include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--include_lib("../deps/folsom/include/folsom.hrl").
+-include("rivus_cep.hrl").
 
 window_test_() ->
     {setup,
-     fun () -> folsom:start() end,
-     fun (_) -> folsom:stop() end,
+     fun () -> rivus_cep_slide_ets:start_link(),
+	       rivus_cep_slide_server_sup:start_link()
+     end,
+     fun (_) -> ok end,
 
      [{"Create new window & insert event",
        fun new/0},
@@ -86,9 +88,9 @@ select_using_qlc() ->
 
 %%    Window = folsom_metrics_histogram:get_value(as),
 %%    Sample = Window#histogram.sample,
-    Size = Window#slide.window,
+    Size = Window#slide.size,
     Reservoir = Window#slide.reservoir,    
-    Oldest = folsom_sample_slide:moment() - Size,
+    Oldest = rivus_cep_utils:timestamp() - Size,
 
     Ms1 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event1  -> Value end),
     Ms2 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event2  -> Value end),
