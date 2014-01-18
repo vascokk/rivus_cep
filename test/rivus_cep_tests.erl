@@ -8,14 +8,12 @@
 
 query_worker_test_() ->
     {setup,
-     fun () -> folsom:start(),
-	       lager:start(),
+     fun () -> lager:start(),
 	       application:start(gproc),
 	       lager:set_loglevel(lager_console_backend, debug),
-	       application:start(rivus_cep)
+	       ok = application:start(rivus_cep)
      end,
-     fun (_) -> folsom:stop(),
-		application:stop(lager),
+     fun (_) -> aapplication:stop(lager),
 		application:stop(gproc),
 		application:stop(rivus_cep)
      end,
@@ -33,14 +31,12 @@ query_worker_test_() ->
 
 shared_streams_test_() ->
     {setup,
-     fun () -> folsom:start(),
-	       lager:start(),
+     fun () -> lager:start(),
 	       application:start(gproc),
 	       lager:set_loglevel(lager_console_backend, debug),
-	       application:start(rivus_cep)
+	       ok = application:start(rivus_cep)
      end,
-     fun (_) -> folsom:stop(),
-		application:stop(lager),
+     fun (_) -> application:stop(lager),
 		application:stop(gproc),
 		application:stop(rivus_cep)
      end,

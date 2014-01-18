@@ -7,7 +7,6 @@
   {applications, [
                   kernel,
                   stdlib,
-		  folsom,
 		  gproc,
 		  lager
                  ]},
