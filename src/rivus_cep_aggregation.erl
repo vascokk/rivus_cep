@@ -19,7 +19,6 @@
 -export([eval_resultset/3, get_group_key/1, new_state/0]).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("../deps/folsom/include/folsom.hrl").
 -include("rivus_cep.hrl").
 
 eval_resultset(Stmt, [H|T], #res_eval_state{recno = RecNo, result = CurrentRes} = State) ->
