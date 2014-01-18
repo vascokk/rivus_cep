@@ -7,22 +7,23 @@
 
 query_worker_test_() ->
     {setup,
-     fun () -> folsom:start(),
-	       lager:start(),
+     fun () -> lager:start(),
 	       application:start(gproc),
-	       lager:set_loglevel(lager_console_backend, debug)
+	       lager:set_loglevel(lager_console_backend, debug),
+	       ok = application:start(rivus_cep)
      end,
-     fun (_) -> folsom:stop(),
-		application:stop(lager),
-		application:stop(gproc)
+     fun (_) -> application:stop(lager),
+		application:stop(gproc),
+		ok = application:stop(rivus_cep)
      end,
 
-     [{"Test query without aggregations",
-       fun query_1/0},
-      {"Test an aggregation query",
-       fun query_2/0},
+     [%%{"Test query without aggregations",
+      %%  fun query_1/0},
+      %% {"Test an aggregation query",
+      %%  fun query_2/0},
       {"Tes query on event sequence (event pattern matching)",
-       fun pattern/0}]
+       fun pattern/0}
+     ]
     }.
 
 query_1() ->
