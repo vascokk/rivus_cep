@@ -66,8 +66,8 @@ event_param -> alias '.' atom: {'$1', value_of('$3')}.
 from_clause -> from events: '$2'.
 from_clause -> from pattern: {pattern, '$2'}.
 
-pattern -> event '->' event: {'$1','$3'}.
-pattern -> event '->' pattern: {'$1', '$3'}.
+pattern -> event '->' event: ['$1','$3'].
+pattern -> event '->' pattern: ['$1', '$3'].
 
 event -> atom: {nil, value_of('$1')}. 
 event -> atom as alias: {'$3',value_of('$1')}.
@@ -117,17 +117,17 @@ value_of(Token) -> element(3, Token).
 line_of(Token) -> element(2, Token).
 type_of(Token) -> element(1, Token).
 flatten(L) -> lists:flatten(L).
-    
+
 get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
     {IsPattern, FromClause} = case _FromClause of
-				  {pattern, Events} -> {true, tuple_to_list(Events)};
+				  {pattern, Events} -> {true, Events};
 				  _ -> {false, _FromClause}
 			      end,
     Select = replace_select_aliases(SelectClause, FromClause),
     Where = replace_where_aliases(WhereClause, FromClause),
     From = case IsPattern of
-	       true -> {pattern, {remove_from_aliases(FromClause)}};
-	       false -> {remove_from_aliases(FromClause)}
+	       true -> {pattern, {remove_from_aliases(FromClause, [])}};
+	       false -> {remove_from_aliases(FromClause, [])}
 	   end,
     [{Name}, {Select}, From, {Where}, {WithinClause}].
 
@@ -153,7 +153,7 @@ replace_select_aliases(Tuples, FromTuples) when is_list(Tuples) ->
 				     true -> {element(2,hd(FromTuples)), E2} ;
 				     _ -> erlang:error({error, missing_event_qualifier})
 				 end;
-			  _ -> {_, Event} = lists:keyfind(E1, 1, FromTuples),
+			  _ -> {_, Event} = lists:keyfind(E1, 1, lists:flatten(FromTuples)),
 			       {Event, E2}
 		      end;
 		 ({EventParam}) ->
@@ -175,16 +175,25 @@ replace_where_aliases({E1, E2}, FromTuples) ->
     case E1 of
 	integer -> {integer, E2};
 	float -> {float, E2};
-	_ ->  {_, Event} = lists:keyfind(E1,1,FromTuples),
+	_ ->  {_, Event} = lists:keyfind(E1,1, lists:flatten(FromTuples)),
 	      {Event, E2}
 	%% TODO: the case when there is no event aliases
     end.
 
-remove_from_aliases(FromTuples) ->
-    lists:map(fun({Alias, EventName}) ->
-		      EventName
-	      end,
-	      FromTuples).
+%% remove_from_aliases(FromTuples) ->
+%%     lists:map(fun({Alias, EventName}) ->
+%% 		      EventName
+%% 	      end,
+%% 	      lists:flatten(FromTuples)).
+
+remove_from_aliases([H|T], Acc) when is_tuple(H) ->
+    remove_from_aliases(T, Acc ++ [element(2, H)]);
+remove_from_aliases([H|T], Acc) when is_list(H) ->
+    remove_from_aliases(T, Acc ++ [list_to_tuple(remove_from_aliases(H, []))]);
+remove_from_aliases([], Acc) ->
+    Acc.
+
+
 
 %% assign_var_to_event(From) ->
 %%     {Res, _} = lists:mapfoldl(fun(Event, Idx) -> {{"E" ++ integer_to_list(Idx), atom_to_list(Event)}, Idx+1} end, 1, From),

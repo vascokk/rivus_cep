@@ -14,7 +14,6 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%------------------------------------------------------------------------------
-
 -module(rivus_cep_query_planner).
 
 -include("rivus_cep.hrl").
@@ -24,8 +23,8 @@
 	 predicates_to_list/1,
 	 get_predicate_variables/1,
 	 sort_predicates/1,
-	 pattern_to_graph/1]).
-
+	 pattern_to_graph/1,
+	 get_first_event_from_pattern/1]).
 
 
 analyze( [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}]) ->
@@ -39,7 +38,7 @@ analyze( [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}
 
 sort_predicates(WhereClause) ->
     PL = predicates_to_list(to_cnf(WhereClause)),
-    VL = get_predicate_variables(PL).
+    VL = get_predicate_variables(lists:flatten(PL)).
 
 get_predicate_variables(PL) ->
     [{get_predicate_variables(Predicate, ordsets:new()), Predicate} || Predicate <- PL].
@@ -83,40 +82,34 @@ distribute_or_over_and(Predicate) ->
 pattern_to_graph(Pattern) ->
     pattern_to_graph(Pattern, digraph:new()).
 
-pattern_to_graph([First,Second|T], G) when not is_list(First), not is_list(Second)->
+pattern_to_graph([First,Second|T], G) when is_atom(First), is_atom(Second) ->
     FV = digraph:add_vertex(G, First),
     SV = digraph:add_vertex(G, Second),
     digraph:add_edge(G, FV, SV),
     pattern_to_graph([Second|T], G);
-pattern_to_graph([First,Second|T], G) when not is_list(First), is_list(Second)->
+pattern_to_graph([First,Second|T], G) when is_atom(First), is_tuple(Second) -> 
     FV = digraph:add_vertex(G, First),
-    %% [a,b,[{c, [c,d]},{x, [x,d]}]  ]
-    lists:map(fun(S) when not is_tuple(S) -> V = digraph:add_vertex(G, S),
-					     digraph:add_edge(G, FV, V);
-		 ({S, L}) when not is_tuple(S), is_list(L) -> V = digraph:add_vertex(G, S),
-							      digraph:add_edge(G, FV, V),
-							      pattern_to_graph([S,L],G)
-	      end, Second),
-    pattern_to_graph([Second|T], G);
-pattern_to_graph([First,Second|T], G) when is_list(First), not is_list(Second)->
-    SV = digraph:add_vertex(G, Second),
-    lists:map(fun(F) when not is_tuple(F) -> V = digraph:add_vertex(G, F),
-					     digraph:add_edge(G, V, SV);
-		 ({F, L}) when not is_tuple(F), is_list(L) -> V = digraph:add_vertex(G, F),
-							      digraph:add_edge(G, V, SV),
-							      pattern_to_graph([F,L],G)
-	      end, First),
+    lists:foreach(fun(V) when is_atom(V) ->
+			  SV = digraph:add_vertex(G, V),
+			  digraph:add_edge(G, FV, SV);
+		     (T) when is_tuple(T) ->
+			  L = tuple_to_list(T),
+			  SV = digraph:add_vertex(G, hd(L)),
+			  digraph:add_edge(G, FV, SV),
+			  pattern_to_graph(L, G)
+		  end, tuple_to_list(Second)),
     pattern_to_graph([Second|T], G);
 pattern_to_graph([First,Second|_], _) when is_list(First), is_list(Second)->
     erlang:error(unsupported_pattern);
 pattern_to_graph([_|[]], G) ->
     G.
 
+get_first_event_from_pattern(Pattern) ->
+    false.
+
 get_join_keys(Events, Predicate) ->
     Keys = [{Event, ordsets:to_list(get_join_keys(Predicate, Event, ordsets:new()))} || Event <- Events],
     lists:foldl(fun({Event, Params}, Acc) -> orddict:store(Event, Params, Acc) end, orddict:new(), Keys).
-
-
 
 get_join_keys({_, Left, Right}, Event, Acc) ->
     NewAcc = get_join_keys(Left, Event, Acc),

@@ -133,3 +133,22 @@ parse_pattern_test() ->
 		      {60}]},
 		 rivus_cep_parser:parse(Tokens)).
 
+
+parse_pattern_2_test() ->
+        {ok, Tokens, Endline} = rivus_cep_scanner:string("define pattern1 as
+                                                         select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
+                                                         from event1 as ev1 -> event2 as ev2 -> event3 as ev3
+                                                         where ev1.eventparam1 = ev2.eventparam2 and ev2.eventparam1 = ev3.eventparam2
+                                                         within 60 seconds; ", 1),
+
+    ?assertEqual({ok,[{pattern1},
+		      {[{event1,eventparam1},
+			{event2,eventparam2},
+			{event2,eventparam3},
+			{event1,eventparam2}]},
+		      {pattern,{[event1,{event2,event3}]}},
+		      {{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
+			{eq,{event2,eventparam1},{event3,eventparam2}}}},
+		      {60}]},
+		 rivus_cep_parser:parse(Tokens)).
+

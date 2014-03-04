@@ -38,11 +38,14 @@ predicates_to_list_3_test()->
 
 
 get_predicate_variables_test() ->
-     Predicate = {'or',{gt,{plus,{mult,{event1,eventparam1},{event2,eventparam2}},{integer,4}},
-			      {event2,eventparam4}},
-			{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
-			 {gt,{event1,eventparam1},{event2,eventparam2}}}},
+    Predicate = {'or',{gt,{plus,{mult,{event1,eventparam1},{event2,eventparam2}},{integer,4}},
+		       {event2,eventparam4}},
+		 {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
+		  {gt,{event1,eventparam1},{event2,eventparam2}}}},
+    %% Transform Where Clause in Conjunctive Normal Form
     CNF =  rivus_cep_query_planner:to_cnf(Predicate),
+
+    %% Get the list of predicates (list of conjuncts)
     PL =  rivus_cep_query_planner:predicates_to_list(CNF),
     ?assertEqual([{'or',{gt,{plus,{mult,{event1,eventparam1},{event2,eventparam2}},{integer,4}},
 			 {event2,eventparam4}},
@@ -51,34 +54,116 @@ get_predicate_variables_test() ->
 			 {event2,eventparam4}},
 		   {gt,{event1,eventparam1},{event2,eventparam2}}}]
 		 , PL),
-    %% [ {[variables], predicate}, {[variables],predicate}, .....  ]
+    %% find the variables in each predicate(conjunct) and return a list of pairs: variables-predicate:
+    %% [ {[variables], predicate}, {[variables],predicate}, {[variables],predicate}, .....  ]
     ?assertEqual([{[{event1,eventparam1},
-		   {event2,eventparam2},
-		   {event2,eventparam4},
-		   {integer,4}],
+		    {event2,eventparam2},
+		    {event2,eventparam4},
+		    {integer,4}],
 		   {'or',{gt,{plus,{mult,{event1,eventparam1},{event2,eventparam2}},{integer,4}},
-			 {event2,eventparam4}},
-		   {eq,{event1,eventparam1},{event2,eventparam2}}}
+			  {event2,eventparam4}},
+		    {eq,{event1,eventparam1},{event2,eventparam2}}}
 		  },
 		  {[{event1,eventparam1},
-		   {event2,eventparam2},
-		   {event2,eventparam4},
-		   {integer,4}],
+		    {event2,eventparam2},
+		    {event2,eventparam4},
+		    {integer,4}],
 		   {'or',{gt,{plus,{mult,{event1,eventparam1},{event2,eventparam2}},{integer,4}},
-			 {event2,eventparam4}},
-		   {gt,{event1,eventparam1},{event2,eventparam2}}}
+			  {event2,eventparam4}},
+		    {gt,{event1,eventparam1},{event2,eventparam2}}}
 		  }],
 		 rivus_cep_query_planner:get_predicate_variables(PL)).
 
 pattern_to_graph_test() ->
-    Pattern = [a,b,[{c, [c,d]},{x, [x,d]}]],
+    %{a,b} - choice "a or b"
+    %[a,b] - sequence "a then b"	
+    Pattern = [a,b,{{c, {c,d}},{x, {x,d}}}], %% a->b->((c->(c or d)) or (x->(x or d)))
     G = rivus_cep_query_planner:pattern_to_graph(Pattern),
+    ?assertEqual([a,b],digraph:get_path(G,a,b)),
+    ?assertEqual([b,c],digraph:get_path(G,b,c)),
+    ?assertEqual([b,x],digraph:get_path(G,b,x)),
+    ?assertEqual([a,b,c],digraph:get_path(G,a,c)),
+    ?assertEqual([a,b,x],digraph:get_path(G,a,x)),
+    ?assertEqual([c,c],digraph:get_path(G,c,c)),
+    ?assertEqual([c,d],digraph:get_path(G,c,d)),
+    ?assertEqual([x,x],digraph:get_path(G,x,x)),
+    ?assertEqual([x,d],digraph:get_path(G,x,d)),
+    ?assertEqual( [a,b,x,d],digraph:get_path(G,a,d)),
+    ?assertNot(digraph:get_path(G,d,a)),
+    ?assertNot(digraph:get_path(G,x,a)),
+    ?assertNot(digraph:get_path(G,c,a)),
+    ?assertNot(digraph:get_path(G,b,a)),
+    ?assertNot(digraph:get_path(G,c,b)),
+    ?assertNot(digraph:get_path(G,x,b)),
+    ?assertNot(digraph:get_path(G,d,b)),
+    ?assertNot(digraph:get_path(G,d,c)),
+    
     ?assertEqual([x,c], digraph_utils:loop_vertices(G)),
     ?assertEqual([a,b,c], digraph:get_path(G, a, c)),
     ?assertEqual([a,b,x], digraph:get_path(G, a, x)),
+    ?assertEqual(1, digraph:out_degree(G, a)),
+    ?assertEqual(2, digraph:out_degree(G, b)),
+    ?assertEqual(2, digraph:out_degree(G, c)),
+    ?assertEqual(2, digraph:out_degree(G, x)),
+    ?assertEqual(0, digraph:out_degree(G, d)),
+    ?assertEqual(2, digraph:in_degree(G, d)),
+    ?assertEqual(2, digraph:in_degree(G, c)),
+    ?assertEqual(2, digraph:in_degree(G, x)),
+    ?assertEqual(0, digraph:in_degree(G, a)),
+    ?assertEqual(1, digraph:in_degree(G, b)),
     ?assertEqual([c,d], digraph_utils:reachable_neighbours([c],G)),
-    ?assertEqual([x,d], digraph_utils:reachable_neighbours([x],G)).
+    ?assertEqual([x,d], digraph_utils:reachable_neighbours([x],G)),
+    ?assertNot(digraph:get_cycle(G, a)),
+    ?assertNot(digraph:get_cycle(G, b)),
+    ?assertNot(digraph:get_cycle(G, d)),
+    ?assertEqual([c], digraph:get_cycle(G, c)),
+    ?assertEqual([x], digraph:get_cycle(G, x)),
     
+    %% ?debugMsg(io_lib:format("Is tree: ~p~n",[digraph_utils:is_tree(G)])),
+    %% ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])),
+     ?debugMsg(io_lib:format("Subgraph  [a,d]: ~p~n",[digraph_utils:subgraph(G,[a,d],[{keep_labels,true}])])).
+
+
+
+
+assign_predicates_test() ->
+    Stmt = [{pattern1},
+		 {[{event1,eventparam1},
+		   {event2,eventparam2},
+		   {event2,eventparam3},
+		   {event1,eventparam2}]},
+		 {pattern,{[event1,{event2,event3}]}}, 
+		 {{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
+		   {eq,{event2,eventparam1},{event3,eventparam2}}}},
+		 {60}],
+    
+    Predicate = {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
+		   {eq,{event2,eventparam1},{event3,eventparam2}}},
+    Pattern = [event1,{event2,event3}], % event1 -> (event2 or event3)
+    CNF =  rivus_cep_query_planner:to_cnf(Predicate),
+    ?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
+    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
+    ?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
+    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
+    ?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),    
+    G = rivus_cep_query_planner:pattern_to_graph(Pattern),
+    %%?debugMsg(io_lib:format("G edges: ~p~n",[digraph:edges(G)])),
+    ?assertEqual([event1,event2],digraph:get_path(G, event1, event2)),
+    ?assertNot(digraph:get_path(G, event2, event3)),
+    ?assertEqual([event1,event3],digraph:get_path(G, event1, event3)),
+    ?assertNot(digraph:get_path(G, event3, event2)),
+    ?assertNot(digraph:get_path(G, event3, event1)),
+    ?assertNot(digraph:get_path(G, event2, event1)),
+    FsmStates = lists:reverse(digraph_utils:preorder(G)),
+    ?debugMsg(io_lib:format("FSM States: ~p~n",[FsmStates])),
+    lists:foreach(fun(State) -> ?debugMsg(io_lib:format("Reaching Vertex:~p Path: ~p~n",[State, digraph_utils:reachable([State], G)])) end, FsmStates),
+    %% PL = [{eq,{event1,eventparam1},{event2,eventparam2}},
+    %%       {eq,{event2,eventparam1},{event3,eventparam2}}]
+    PL,
+    ?debugMsg(io_lib:format("Is tree: ~p~n",[digraph_utils:is_tree(G)])),
+    ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])).
+
+
 get_join_keys_test() ->
     Predicate =  {eq,{event1,eventparam1},{event2, eventparam1}},
     Events = [event1, event2],

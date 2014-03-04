@@ -1,4 +1,3 @@
-%% ; -*- mode: Erlang;-*-
 %%------------------------------------------------------------------------------
 %% Copyright (c) 2013 Vasil Kolarov
 %%
@@ -20,36 +19,33 @@
 -compile([{parse_transform, lager_transform}]).
 -include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("stdlib/include/qlc.hrl").
+-include("rivus_cep.hrl").
 
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, code_change/3, terminate/2]).
 -export([start_link/1, send_result/1]).
 
--record(query_ast,{
-	  select,
-	  from,
-	  where,
-	  within
-	 }).
 
 -record(state,{
 	  query_name,
 	  query_type,
-	  fsm_state,
-	  fsm_states = [],
+	  fsm_states = dict:new(),
+	  pattern = [],
 	  producers,
 	  subscribers,
 	  events = [] ,
 	  timeout = 60,
 	  query_ast,
 	  window,
-	  win_register
+	  win_register,
+	  query_plan = #query_plan{}
 }).
 
 %%% API functions
 
 start_link({QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg}) ->
     {QueryName} = hd(QueryClauses),
-    gen_server:start_link( {local, QueryName}, ?MODULE, [QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg], []).
+    gen_server:start_link( {local, QueryName}, ?MODULE, [QueryClauses, Producers, Subscribers,
+							 Options, QueryWindow, GlobalWinReg], []).
 
 init([QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg]) ->
     [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}] = QueryClauses,
@@ -58,16 +54,17 @@ init([QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg])
                                    {Events} -> {simple, Events}
                                end,
    
-    Ast = #query_ast{select=SelectClause, from= FromClause, where=WhereClause, within=WithinClause},
+    Ast = #query_ast{select=SelectClause, from=FromClause, where=WhereClause, within=WithinClause},
 
     case QueryWindow of
     	global -> [ gproc:reg({p, l, {Producer, Event, global }}) || Producer<-Producers, Event <- Events];
     	_ -> [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events]
     end,
     
-
+    Plan = rivus_cep_query_planner:analyze(QueryClauses),
     
-    lager:debug("~nStarting: ~p, PID: ~p, Query window: ~p, GlobalWinRegister: ~p ~n",[QueryName, self(), QueryWindow, GlobalWinReg]),
+    lager:debug("~nStarting: ~p, PID: ~p, Query window: ~p, GlobalWinRegister: ~p ~n",
+		[QueryName, self(), QueryWindow, GlobalWinReg]),
 
     {ok, #state{query_name = QueryName,
 		query_type = QueryType,
@@ -77,8 +74,9 @@ init([QueryClauses, Producers, Subscribers, Options, QueryWindow, GlobalWinReg])
 		subscribers = Subscribers,
 		events = Events,
 		query_ast = Ast,
-		fsm_state = hd(Events),
-		fsm_states = lists:zip(Events, lists:seq(1,length(Events)))}}.
+		fsm_states = dict:new(),%%hd(Events),
+		pattern = lists:zip(Events, lists:seq(1,length(Events))),
+		query_plan = Plan}}.
 
 create_qh_ss(Event, WinReg) ->
     Window = dict:fetch(Event, WinReg),
@@ -157,6 +155,43 @@ send_result(#state{events=Events, window = Window, query_ast = Ast} = State) whe
 	     [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#state.subscribers]
     end.
 
+send_result(pattern, #state{fsm_states = FsmDict, query_ast = Ast} = State) ->
+         
+    Reservoirs = lists:map(fun({_, {_, Reservoir}}) -> dict:to_list(Reservoir) end, dict:to_list(FsmDict)),
+
+    PreResultSet =  lists:map(fun({_, EventList}) -> EventList end, Reservoirs),
+
+    
+    lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
+
+    CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], PreResultSet),
+
+    lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
+
+    WhereClause = Ast#query_ast.where,
+    SelectClause = Ast#query_ast.select,
+    
+    FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(WhereClause, ResRecord) ],
+    
+    lager:debug("---> Filtered Result: ~p", [FilteredRes]),
+
+    ResultSet = [list_to_tuple(build_select_clause(SelectClause, ResRecord,  [])) || ResRecord <-FilteredRes],
+
+    lager:debug("---> ResultSet: ~p", [ResultSet]),
+    
+    case ResultSet of
+    	[] -> nil;
+    	_ -> FirstRec = hd(ResultSet),
+	     Key = rivus_cep_aggregation:get_group_key(FirstRec),
+	     %%naive check for aggregations in the select clause:
+	     Result = case length(tuple_to_list(FirstRec)) == length(tuple_to_list(Key)) of
+			  true -> ResultSet; %% no aggregations in the 'select' stmt
+			  false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
+		      end,
+	     lager:debug("---> Result: ~p <-----", [Result]),
+	     [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#state.subscribers]
+    end.
+
 create_match_spec(Event, Oldest) ->
     ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==Event  -> Value end).
     
@@ -175,7 +210,9 @@ where_eval({Op, Left, Right}, ResRecord) ->
 	gte -> where_eval(Left, ResRecord) >= where_eval(Right, ResRecord);
 	ne -> where_eval(Left, ResRecord) /= where_eval(Right, ResRecord); 
 	plus -> where_eval(Left, ResRecord) + where_eval(Right, ResRecord);
-	minus -> where_eval(Left, ResRecord) - where_eval(Right, ResRecord)
+	minus -> where_eval(Left, ResRecord) - where_eval(Right, ResRecord);
+	mult -> where_eval(Left, ResRecord) * where_eval(Right, ResRecord); 
+	'div' -> where_eval(Left, ResRecord) / where_eval(Right, ResRecord)
     end;
 where_eval({Type, Value}, ResRecord) ->
     case Type of
@@ -184,7 +221,10 @@ where_eval({Type, Value}, ResRecord) ->
 	EventName -> Event = lists:keyfind(EventName,1,ResRecord),
 		     (EventName):get_param_by_name(Event,Value)
 
-    end.
+    end;
+where_eval({neg,Predicate}, ResRecord) ->
+    {neg,where_eval(Predicate, ResRecord)}.
+
 
 select_eval({integer, Value}, _) ->
      Value;
@@ -210,32 +250,80 @@ build_select_clause([H|T], EventList, Acc) ->
      build_select_clause(T, EventList, Acc ++ [select_eval(H, EventList)]);
 build_select_clause([], _, Acc) ->
      Acc.
-	    
-is_correct_state(EventName, #state{fsm_state = FsmState, fsm_states = _FsmStates} = State) ->
-    lager:debug("FSM States: ~p~n",[_FsmStates]),
-    {_, FsmStateNo} = lists:keyfind(FsmState, 1, _FsmStates), 
-    {_, EventStateNo} = lists:keyfind(EventName, 1, _FsmStates),
-    lager:debug("fsm state :~p~n",[FsmState]),
-    lager:debug("event state :~p~n",[EventName]),
+       
+build_pred_key_for_event(Event, JoinKeys) ->
+    EventName = element(1,Event),
+    {_, ParamList} = lists:keyfind(EventName, 1, JoinKeys),
+    ParamValues = lists:foldl(fun(ParamName, Acc) ->
+				      Acc ++ [EventName:get_param_by_name(Event, ParamName)]			    
+			      end, [], ParamList),
+    {EventName, list_to_tuple(ParamValues)}.
 
-    lager:debug("fsm state no:~p~n",[FsmStateNo]),
-    lager:debug("event state no:~p~n",[EventStateNo]),
-    if FsmStateNo == EventStateNo -> true;      
-       true  -> false
+maybe_update_fsm_state(EventName, Event, PredicateKey, #state{fsm_states = FsmStatesDict, pattern = _Pattern} = State) ->
+    case dict:is_key(PredicateKey, FsmStatesDict) of
+	false ->  State#state{fsm_states = set_initial_fsm_state_for_predicate(PredicateKey, _Pattern, FsmStatesDict)};
+	true -> {FsmStateName, Reservoir} = dict:fetch(PredicateKey, FsmStatesDict), 
+		lager:debug("FSM States: ~p~n",[_Pattern]),
+		{_, FsmStateNo} = lists:keyfind(FsmStateName, 1, _Pattern), 
+		{_, EventStateNo} = lists:keyfind(EventName, 1, _Pattern),
+		lager:debug("fsm state: ~p , event state: ~p~n",[FsmStateName, EventName]),
+		lager:debug("fsm state no: ~p, event stateno: ~p~n",[FsmStateNo, EventStateNo]),
+		case FsmStateNo == EventStateNo of
+		    true -> set_next_state(EventName, Event, FsmStateNo, Reservoir, PredicateKey, State);      
+		    false  -> State
+		end
     end.
 
-next_state(#state{fsm_state = FsmState, fsm_states = _FsmStates, window = Window} = State) ->
-    {_, FsmStateNo} = lists:keyfind(FsmState, 1, _FsmStates), 
-    Len = length(_FsmStates),
-    {{NextFsmState, _}, NewWindow} = case FsmStateNo of
-			    Len -> send_result(State),
-				   {hd(_FsmStates), new_window(State)};
-			    _ ->  {lists:nth(FsmStateNo+1, _FsmStates), Window}
-			end,
-    State#state{fsm_state = NextFsmState, window = NewWindow}.
+set_initial_fsm_state_for_predicate(PredicateKey, [{FsmStateName, _}|T], FsmStatesDict) ->
+    lager:debug("Set initial state !!! ~n"),
+    Reservoir = dict:new(),    
+    dict:store(PredicateKey, {FsmStateName, Reservoir}, FsmStatesDict).
+    
+update_event_reservoir(PredicateKey, EventName, Event, FsmStatesDict, _Pattern, FsmStateNo) ->
+     lager:debug("update_event_reservoir ---------------- ~n"),
+    NewFsmStateName = element(1, lists:nth(FsmStateNo, _Pattern)),
+    {_, Reservoir} = dict:fetch(PredicateKey, FsmStatesDict),
+    NewRes = dict:append(EventName, Event, Reservoir),
+    dict:store(PredicateKey, {NewFsmStateName, NewRes}, FsmStatesDict).
+    
+
+set_next_state(EventName, Event, FsmStateNo, Reservoir, PredicateKey, #state{fsm_states = FsmStatesDict,
+									     pattern = _Pattern} = State) ->   
+    Len = length(_Pattern),
+    NewFsmStatesDict = case FsmStateNo of
+			   Len -> TmpState = State#state{fsm_states =
+							     update_event_reservoir(PredicateKey, EventName,
+										    Event, FsmStatesDict, _Pattern,
+										    FsmStateNo)},
+				  send_result(pattern, State),
+				  set_initial_fsm_state_for_predicate(PredicateKey, _Pattern, FsmStatesDict);
+			   _ -> update_event_reservoir(PredicateKey, EventName, Event, FsmStatesDict,
+						       _Pattern, FsmStateNo)
+		       end,
+    State#state{fsm_states = NewFsmStatesDict}.
+    
 
 new_window(#state{timeout = Timeout}) ->
     rivus_cep_window:new(Timeout).
+
+is_initial_state(EventName, _Pattern) ->
+    {_, EventStateNo} = lists:keyfind(EventName, 1, _Pattern),
+    EventStateNo == 1.
+
+spawn_new_fsm(EventName, Event, State) ->	    
+    %% create new fsm process
+
+    %% add the process to the query sliding window
+    tbd.
+
+notify_all_fsm(EventName, Event) ->
+    %%get the current sliding window
+    %%send the event to all the processes
+    tbd.
+
+%%----------------------------------------------------------------------------------------------
+%% gen_server functions
+%%----------------------------------------------------------------------------------------------
 
 handle_call(stop, From, State) ->
     {stop, normal, ok, State};	
@@ -246,8 +334,6 @@ handle_call(Request, From, State) ->
 handle_cast(Msg, State) ->
     {noreply, State}.
 
-
-
 handle_info({ EventName , Event}, #state{query_type = QueryType, window = Window} = State) when QueryType == simple->
     lager:debug("handle_info, query_type: simple,  Event: ~p",[Event]),
 
@@ -257,14 +343,28 @@ handle_info({ EventName , Event}, #state{query_type = QueryType, window = Window
     end,
     send_result(State),
     {noreply, State};
-handle_info({ EventName , Event}, #state{fsm_states = _FsmStates, query_type = QueryType} = State) when QueryType == pattern ->
+handle_info({ EventName , Event}, #state{query_type = QueryType} = State) when QueryType == pattern ->
     lager:debug("handle_info, query_type: pattern, EventName: ~p,  Event: ~p",[EventName,Event]),
-    NewState = case is_correct_state(EventName, State) of
-		   true -> rivus_cep_window:update(State#state.window, Event),
-			   next_state(State);
-		   false -> State#state{fsm_state = element(1,hd(_FsmStates)),
-					window = new_window(State)}
+    %% JoinKeys = (State#state.query_plan)#query_plan.join_keys,    
+    %% PredicateKey = build_pred_key_for_event(Event, JoinKeys),
+    %% lager:debug("Predicate key: ~p~n",[PredicateKey]),
+    %% NewState = maybe_update_fsm_state(EventName, Event, PredicateKey, State),
+
+    %% case Window of
+    %% 	global -> ok;
+    %% 	_ -> rivus_cep_window:update(Window, Event)		
+    %% end,
+
+    %check if it is state0 (initial state):
+    % if it is - create new FSM process and store it into the window
+    % if it is not - send the event to every process in the window for evaluation. Posssible optimisation: check which state the event equals to and get only           the FSMs in ("this state"-1)
+
+    NewState = case is_initial_state(EventName, State#state.pattern) of
+		   true -> spawn_new_fsm(EventName, Event, State);
+		   false -> notify_all_fsm(EventName, Event)
 	       end,
+
+    send_result(State),    
     {noreply, NewState}; 
 handle_info(Info, State) ->
     lager:debug("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ State#state.query_name ,Info]),
