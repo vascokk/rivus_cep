@@ -134,7 +134,11 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
 pattern_to_graph(Start, PredVars, [First,Second|_], _) when is_list(First), is_list(Second)->
     erlang:error(unsupported_pattern);
 pattern_to_graph(Start, PredVars, [_|[]], G) ->
-    G.
+    case PredVars of
+	[] -> G;
+	_ -> erlang:error({unsupported_pattern, "Cannot assign some ofthe predicates.", PredVars})
+    end.
+
 
 set_predicates_on_edge(Start, Second, PredVars, G) ->
     CurrentPath = ordsets:from_list(digraph:get_path(G, Start, Second)),
