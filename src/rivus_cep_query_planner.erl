@@ -23,8 +23,9 @@
 	 predicates_to_list/1,
 	 get_predicate_variables/1,
 	 sort_predicates/1,
-	 pattern_to_graph/1,
-	 get_first_event_from_pattern/1]).
+	 pattern_to_graph/2,
+	 get_start_state/1,
+	 get_predicates_for_edge/4]).
 
 
 analyze( [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}]) ->
@@ -79,33 +80,59 @@ distribute_or_over_and({'or', P, {'and', Q, R}}) ->
 distribute_or_over_and(Predicate) ->
     Predicate.
 
-pattern_to_graph(Pattern) ->
-    pattern_to_graph(Pattern, digraph:new()).
+pattern_to_graph(PredVars, Pattern) ->
+    Start = get_start_state(Pattern),
+    pattern_to_graph(Start, PredVars, Pattern, digraph:new()).
 
-pattern_to_graph([First,Second|T], G) when is_atom(First), is_atom(Second) ->
+pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_atom(Second) ->
     FV = digraph:add_vertex(G, First),
     SV = digraph:add_vertex(G, Second),
-    digraph:add_edge(G, FV, SV),
-    pattern_to_graph([Second|T], G);
-pattern_to_graph([First,Second|T], G) when is_atom(First), is_tuple(Second) -> 
+    
+    {NewPredVars, Labels} = get_predicates_for_edge(Start, Second, PredVars, G),
+    digraph:add_edge(G, FV, SV, Labels),
+    pattern_to_graph(Start, NewPredVars, [Second|T], G);
+pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_tuple(Second) -> 
     FV = digraph:add_vertex(G, First),
-    lists:foreach(fun(V) when is_atom(V) ->
-			  SV = digraph:add_vertex(G, V),
-			  digraph:add_edge(G, FV, SV);
-		     (T) when is_tuple(T) ->
-			  L = tuple_to_list(T),
-			  SV = digraph:add_vertex(G, hd(L)),
-			  digraph:add_edge(G, FV, SV),
-			  pattern_to_graph(L, G)
-		  end, tuple_to_list(Second)),
-    pattern_to_graph([Second|T], G);
-pattern_to_graph([First,Second|_], _) when is_list(First), is_list(Second)->
+    NewPV = lists:foldl(fun(V, PV) when is_atom(V) ->
+				SV = digraph:add_vertex(G, V),
+				
+				{NewPredVars, Labels} = get_predicates_for_edge(Start, Second, PV, G),
+				digraph:add_edge(G, FV, SV, Labels),
+				NewPredVars;
+			   
+			        %%digraph:add_edge(G, FV, SV);
+			   (T, PV) when is_tuple(T) ->
+				L = tuple_to_list(T),
+				SV = digraph:add_vertex(G, hd(L)),
+				
+				{NewPredVars, Labels} = get_predicates_for_edge(Start, Second, PV, G),
+				digraph:add_edge(G, FV, SV, Labels),
+				
+				%%digraph:add_edge(G, FV, SV),
+				pattern_to_graph(Start, NewPredVars, L, G),
+				NewPredVars
+			end, PredVars, tuple_to_list(Second)),
+    pattern_to_graph(Start, NewPV, [Second|T], G);
+pattern_to_graph(Start, PredVars, [First,Second|_], _) when is_list(First), is_list(Second)->
     erlang:error(unsupported_pattern);
-pattern_to_graph([_|[]], G) ->
+pattern_to_graph(Start, PredVars, [_|[]], G) ->
     G.
 
-get_first_event_from_pattern(Pattern) ->
-    false.
+get_predicates_for_edge(Start, Second, PredVars, G) ->
+    PathSet = ordsets:from_list(digraph:get_path(G, Start, Second)),
+    {NewPredVars,Labels} = lists:foldl(fun({Vars, Predicate}, {PV, Acc}) ->
+					       case lists:all(fun({Event,_}) -> ordsets:is_element(Event, PathSet) end, Vars) of
+						   true -> {ordsets:del_element({Vars,Predicate}, PV),
+							    Acc ++ [Predicate]};
+						   false -> {PV, Acc}
+					       end
+				       end, {ordsets:from_list(PredVars), []}, PredVars),
+    {ordsets:to_list(NewPredVars), Labels}.
+
+%% [{[{event1,eventparam1},{event2,eventparam2}],
+%%                  {eq,{event1,eventparam1},{event2,eventparam2}}},
+%%                 {[{event2,eventparam1},{event3,eventparam2}],
+%%                  {eq,{event2,eventparam1},{event3,eventparam2}}}]
 
 get_join_keys(Events, Predicate) ->
     Keys = [{Event, ordsets:to_list(get_join_keys(Predicate, Event, ordsets:new()))} || Event <- Events],
@@ -121,3 +148,9 @@ get_join_keys({EventName, Value}, Event, Acc) ->
     	Event -> ordsets:add_element(Value, Acc);
     	_ -> Acc
     end.
+
+get_start_state(Pattern) when is_atom(hd(Pattern)) ->
+    hd(Pattern);
+get_start_state(_) ->
+    erlang:error(badpattern).
+

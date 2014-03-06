@@ -123,6 +123,45 @@ pattern_to_graph_test() ->
     %% ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])),
      ?debugMsg(io_lib:format("Subgraph  [a,d]: ~p~n",[digraph_utils:subgraph(G,[a,d],[{keep_labels,true}])])).
 
+get_predicates_for_edge_test() ->
+    Predicate = {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
+		       {eq,{event2,eventparam1},{event3,eventparam2}}},
+    Pattern = [event1,event2,event3], % event1 -> event2 ->event3
+    CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
+    ?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
+    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
+    ?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
+    %%PredicateList: [{eq,{event1,eventparam1},{event2,eventparam2}},
+    %%                {eq,{event2,eventparam1},{event3,eventparam2}}]
+    
+    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
+    ?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),
+    %%PredicateVars: [{[{event1,eventparam1},{event2,eventparam2}],
+                %%     {eq,{event1,eventparam1},{event2,eventparam2}}},
+                %%    {[{event2,eventparam1},{event3,eventparam2}],
+                %%     {eq,{event2,eventparam1},{event3,eventparam2}}}]
+
+    G = digraph:new(),
+    V1 = digraph:add_vertex(G, event1),
+    V2 = digraph:add_vertex(G, event2),
+    V3 = digraph:add_vertex(G, event3),
+        
+    Start = rivus_cep_query_planner:get_start_state(Pattern),
+    ?assertEqual(event1, Start),
+    E1 = digraph:add_edge(G, V1, V2, []),
+    {NewPV, Label1} = rivus_cep_query_planner:get_predicates_for_edge(Start, V2, PV, G),
+    digraph:add_edge(G, E1, V1, V2, Label1),
+
+    E2 = digraph:add_edge(G, V2, V3, []),    
+    {NewPV2, Label2} = rivus_cep_query_planner:get_predicates_for_edge(Start, V3, NewPV, G),    
+    digraph:add_edge(G, E2, V2, V3, Label2),
+
+    ?debugMsg(io_lib:format("G: ~p~n",[G])),
+    ?debugMsg(io_lib:format("Label1: ~p~n",[Label1])),
+    ?debugMsg(io_lib:format("Label2: ~p~n",[Label2])),
+    ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])).
+    
+    
 
 
 
@@ -182,6 +221,14 @@ get_join_keys_3_test() ->
 			 {gt,{event1,eventparam1},{event2,eventparam2}}}},
     Events = [event1, event2],
     ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam2,eventparam4]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
+
+get_start_state_test() ->
+    ?assertEqual(a, rivus_cep_query_planner:get_start_state([a,b,c])),
+    ?assertError(badpattern, rivus_cep_query_planner:get_start_state([[a,b],c,d])),
+    ?assertError(badpattern, rivus_cep_query_planner:get_start_state([{a,b},c,d])).
+
+
+    
     
     
     
