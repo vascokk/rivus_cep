@@ -159,7 +159,10 @@ get_predicates_for_edge_test() ->
     ?debugMsg(io_lib:format("G: ~p~n",[G])),
     ?debugMsg(io_lib:format("Label1: ~p~n",[Label1])),
     ?debugMsg(io_lib:format("Label2: ~p~n",[Label2])),
-    ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])).
+    ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])),
+    ?assertEqual(Label1, element(4, digraph:edge(G, hd(digraph:out_edges(G,V1))))),
+    ?assertEqual(Label2, element(4, digraph:edge(G, hd(digraph:out_edges(G,V2))))).
+
     
     
 
