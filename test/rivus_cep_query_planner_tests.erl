@@ -74,11 +74,70 @@ get_predicate_variables_test() ->
 		  }],
 		 rivus_cep_query_planner:get_predicate_variables(PL)).
 
+set_get_predicates_on_edge_test() ->
+    Predicate = {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
+		       {eq,{event2,eventparam1},{event3,eventparam2}}},
+    Pattern = [event1,event2,event3], % event1 -> event2 ->event3
+    CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
+    %%?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
+    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
+    %%?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
+    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
+    %%?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),
+
+    G = digraph:new(),
+    V1 = digraph:add_vertex(G, event1),
+    V2 = digraph:add_vertex(G, event2),
+    V3 = digraph:add_vertex(G, event3),
+        
+    Start = rivus_cep_query_planner:get_start_state(Pattern),
+    ?assertEqual(event1, Start),
+    E1 = digraph:add_edge(G, V1, V2, []),
+    {NewPV, Label1} = rivus_cep_query_planner:set_predicates_on_edge(Start, V2, PV, G),
+    digraph:add_edge(G, E1, V1, V2, Label1),
+
+    E2 = digraph:add_edge(G, V2, V3, []),    
+    {NewPV2, Label2} = rivus_cep_query_planner:set_predicates_on_edge(Start, V3, NewPV, G),    
+    digraph:add_edge(G, E2, V2, V3, Label2),
+
+    %%?debugMsg(io_lib:format("Label1: ~p~n",[Label1])),
+    %%?debugMsg(io_lib:format("Label2: ~p~n",[Label2])),
+
+    ?assertEqual(Label1, rivus_cep_query_planner:get_predicates_on_edge(G,V1,V2)),
+    ?assertEqual(Label2, rivus_cep_query_planner:get_predicates_on_edge(G,V2,V3)).
+
+
 pattern_to_graph_test() ->
+
+    Predicate = {'or',
+    		 {'and',{eq,{b,eventparam1},{c,eventparam2}},
+    		       {eq,{d,eventparam1},{c,eventparam2}}},
+    		 {eq,{x,param1},{d,param1}}},
+
+    CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
+    ?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
+
+    
+    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
+    ?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
+    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
+    ?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),
+    
     %{a,b} - choice "a or b"
     %[a,b] - sequence "a then b"	
     Pattern = [a,b,{{c, {c,d}},{x, {x,d}}}], %% a->b->((c->(c or d)) or (x->(x or d)))
-    G = rivus_cep_query_planner:pattern_to_graph(Pattern),
+
+    
+    G = rivus_cep_query_planner:pattern_to_graph(PV, Pattern),
+    Label1=bla,
+    ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,a,b)),
+    ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,b,c)),
+    ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,c,c)),
+    ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,c,d)),
+    ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,b,x)),
+    ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,x,x)),
+    ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,x,d)),
+
     ?assertEqual([a,b],digraph:get_path(G,a,b)),
     ?assertEqual([b,c],digraph:get_path(G,b,c)),
     ?assertEqual([b,x],digraph:get_path(G,b,x)),
@@ -123,83 +182,6 @@ pattern_to_graph_test() ->
     %% ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])),
     ?debugMsg(io_lib:format("Subgraph  [a,d]: ~p~n",[digraph_utils:subgraph(G,[a,d],[{keep_labels,true}])])).
 
-set_get_predicates_on_edge_test() ->
-    Predicate = {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
-		       {eq,{event2,eventparam1},{event3,eventparam2}}},
-    Pattern = [event1,event2,event3], % event1 -> event2 ->event3
-    CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
-    %%?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
-    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
-    %%?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
-    %%PredicateList: [{eq,{event1,eventparam1},{event2,eventparam2}},
-    %%                {eq,{event2,eventparam1},{event3,eventparam2}}]
-    
-    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
-    %%?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),
-    %%PredicateVars: [{[{event1,eventparam1},{event2,eventparam2}],
-                %%     {eq,{event1,eventparam1},{event2,eventparam2}}},
-                %%    {[{event2,eventparam1},{event3,eventparam2}],
-                %%     {eq,{event2,eventparam1},{event3,eventparam2}}}]
-
-    G = digraph:new(),
-    V1 = digraph:add_vertex(G, event1),
-    V2 = digraph:add_vertex(G, event2),
-    V3 = digraph:add_vertex(G, event3),
-        
-    Start = rivus_cep_query_planner:get_start_state(Pattern),
-    ?assertEqual(event1, Start),
-    E1 = digraph:add_edge(G, V1, V2, []),
-    {NewPV, Label1} = rivus_cep_query_planner:set_predicates_on_edge(Start, V2, PV, G),
-    digraph:add_edge(G, E1, V1, V2, Label1),
-
-    E2 = digraph:add_edge(G, V2, V3, []),    
-    {NewPV2, Label2} = rivus_cep_query_planner:set_predicates_on_edge(Start, V3, NewPV, G),    
-    digraph:add_edge(G, E2, V2, V3, Label2),
-
-    %%?debugMsg(io_lib:format("Label1: ~p~n",[Label1])),
-    %%?debugMsg(io_lib:format("Label2: ~p~n",[Label2])),
-
-    ?assertEqual(Label1, rivus_cep_query_planner:get_predicates_on_edge(G,V1,V2)),
-    ?assertEqual(Label2, rivus_cep_query_planner:get_predicates_on_edge(G,V2,V3)).
-
-
-
-assign_predicates_test() ->
-    Stmt = [{pattern1},
-		 {[{event1,eventparam1},
-		   {event2,eventparam2},
-		   {event2,eventparam3},
-		   {event1,eventparam2}]},
-		 {pattern,{[event1,{event2,event3}]}}, 
-		 {{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
-		   {eq,{event2,eventparam1},{event3,eventparam2}}}},
-		 {60}],
-    
-    Predicate = {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
-		   {eq,{event2,eventparam1},{event3,eventparam2}}},
-    Pattern = [event1,{event2,event3}], % event1 -> (event2 or event3)
-    CNF =  rivus_cep_query_planner:to_cnf(Predicate),
-    ?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
-    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
-    ?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
-    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
-    ?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),    
-    G = rivus_cep_query_planner:pattern_to_graph(Pattern),
-    %%?debugMsg(io_lib:format("G edges: ~p~n",[digraph:edges(G)])),
-    ?assertEqual([event1,event2],digraph:get_path(G, event1, event2)),
-    ?assertNot(digraph:get_path(G, event2, event3)),
-    ?assertEqual([event1,event3],digraph:get_path(G, event1, event3)),
-    ?assertNot(digraph:get_path(G, event3, event2)),
-    ?assertNot(digraph:get_path(G, event3, event1)),
-    ?assertNot(digraph:get_path(G, event2, event1)),
-    FsmStates = lists:reverse(digraph_utils:preorder(G)),
-    ?debugMsg(io_lib:format("FSM States: ~p~n",[FsmStates])),
-    lists:foreach(fun(State) -> ?debugMsg(io_lib:format("Reaching Vertex:~p Path: ~p~n",[State, digraph_utils:reachable([State], G)])) end, FsmStates),
-    %% PL = [{eq,{event1,eventparam1},{event2,eventparam2}},
-    %%       {eq,{event2,eventparam1},{event3,eventparam2}}]
-    PL,
-    ?debugMsg(io_lib:format("Is tree: ~p~n",[digraph_utils:is_tree(G)])),
-    ?debugMsg(io_lib:format("Top sort: ~p~n",[digraph_utils:topsort(G)])).
 
 
 get_join_keys_test() ->
