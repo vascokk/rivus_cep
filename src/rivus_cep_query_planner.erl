@@ -25,7 +25,8 @@
 	 sort_predicates/1,
 	 pattern_to_graph/2,
 	 get_start_state/1,
-	 get_predicates_for_edge/4]).
+	 set_predicates_on_edge/4,
+	 get_predicates_on_edge/3]).
 
 
 analyze( [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}]) ->
@@ -88,7 +89,7 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_a
     FV = digraph:add_vertex(G, First),
     SV = digraph:add_vertex(G, Second),
     
-    {NewPredVars, Labels} = get_predicates_for_edge(Start, Second, PredVars, G),
+    {NewPredVars, Labels} = set_predicates_on_edge(Start, Second, PredVars, G),
     digraph:add_edge(G, FV, SV, Labels),
     pattern_to_graph(Start, NewPredVars, [Second|T], G);
 pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_tuple(Second) -> 
@@ -96,7 +97,7 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
     NewPV = lists:foldl(fun(V, PV) when is_atom(V) ->
 				SV = digraph:add_vertex(G, V),
 				
-				{NewPredVars, Labels} = get_predicates_for_edge(Start, Second, PV, G),
+				{NewPredVars, Labels} = set_predicates_on_edge(Start, Second, PV, G),
 				digraph:add_edge(G, FV, SV, Labels),
 				NewPredVars;
 			   
@@ -105,7 +106,7 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
 				L = tuple_to_list(T),
 				SV = digraph:add_vertex(G, hd(L)),
 				
-				{NewPredVars, Labels} = get_predicates_for_edge(Start, Second, PV, G),
+				{NewPredVars, Labels} = set_predicates_on_edge(Start, Second, PV, G),
 				digraph:add_edge(G, FV, SV, Labels),
 				
 				%%digraph:add_edge(G, FV, SV),
@@ -118,17 +119,28 @@ pattern_to_graph(Start, PredVars, [First,Second|_], _) when is_list(First), is_l
 pattern_to_graph(Start, PredVars, [_|[]], G) ->
     G.
 
-get_predicates_for_edge(Start, Second, PredVars, G) ->
+set_predicates_on_edge(Start, Second, PredVars, G) ->
     PathSet = ordsets:from_list(digraph:get_path(G, Start, Second)),
-    {NewPredVars,Labels} = lists:foldl(fun({Vars, Predicate}, {PV, Acc}) ->
+    {NewPredVars,Labels} = lists:foldl(fun({Vars, Predicate}, {PVSet, Acc}) ->
 					       case lists:all(fun({Event,_}) -> ordsets:is_element(Event, PathSet) end, Vars) of
-						   true -> {ordsets:del_element({Vars,Predicate}, PV),
+						   true -> {ordsets:del_element({Vars,Predicate}, PVSet),
 							    Acc ++ [Predicate]};
-						   false -> {PV, Acc}
+						   false -> {PVSet, Acc}
 					       end
 				       end, {ordsets:from_list(PredVars), []}, PredVars),
     {ordsets:to_list(NewPredVars), Labels}.
 
+get_predicates_on_edge(G, V1, V2) ->
+%        ?assertEqual(Label1, element(4, digraph:edge(G, hd(digraph:out_edges(G,V1))))),
+    [Edge] = lists:filter(fun(E) ->
+				   {E_tmp, V1_tmp, V2_tmp, _ } = digraph:edge(G,E),
+				   V2_tmp == V2
+			   end, digraph:out_edges(G,V1)),
+    {_,_,_,Label} = digraph:edge(G, Edge),
+    Label.
+
+
+    
 %% [{[{event1,eventparam1},{event2,eventparam2}],
 %%                  {eq,{event1,eventparam1},{event2,eventparam2}}},
 %%                 {[{event2,eventparam1},{event3,eventparam2}],
