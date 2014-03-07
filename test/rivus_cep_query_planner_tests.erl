@@ -79,11 +79,8 @@ set_get_predicates_on_edge_test() ->
 		       {eq,{event2,eventparam1},{event3,eventparam2}}},
     Pattern = [event1,event2,event3], % event1 -> event2 ->event3
     CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
-    %%?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
     PL =  rivus_cep_query_planner:predicates_to_list(CNF),
-    %%?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
     PV =  rivus_cep_query_planner:get_predicate_variables(PL),
-    %%?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),
 
     G = digraph:new(),
     V1 = digraph:add_vertex(G, event1),
@@ -100,9 +97,6 @@ set_get_predicates_on_edge_test() ->
     {NewPV2, Label2} = rivus_cep_query_planner:set_predicates_on_edge(Start, V3, NewPV, G),    
     digraph:add_edge(G, E2, V2, V3, Label2),
 
-    %%?debugMsg(io_lib:format("Label1: ~p~n",[Label1])),
-    %%?debugMsg(io_lib:format("Label2: ~p~n",[Label2])),
-
     ?assertEqual(Label1, rivus_cep_query_planner:get_predicates_on_edge(G,V1,V2)),
     ?assertEqual(Label2, rivus_cep_query_planner:get_predicates_on_edge(G,V2,V3)).
 
@@ -115,30 +109,21 @@ pattern_to_graph_2_test() ->
     		 {eq,{x,param1},{d,param1}}},
 
     CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
-    %%?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),    
     PL =  rivus_cep_query_planner:predicates_to_list(CNF),
-    %%?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
     PV =  rivus_cep_query_planner:get_predicate_variables(PL),
-    %%?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),
     
     %{a,b} - choice "a or b"
     %[a,b] - sequence "a then b"	
-    Pattern = [a,b,{{c, {c,d}},{x, {x,d}}}], %% a->b->((c->(c or d)) or (x->(x or d)))
-
-    
+    Pattern = [a,b,{{c, {c,d}},{x, {x,d}}}], %% a->b->((c->(c or d)) or (x->(x or d))) - unsupported pattern. cannot assign predicates
     ?assertError({unsupported_pattern, _, _}, rivus_cep_query_planner:pattern_to_graph(PV, Pattern)).
-
 
 pattern_to_graph_test() ->
     Predicate = {'and',{eq,{b,eventparam1},{c,eventparam2}},
     		       {eq,{d,eventparam1},{c,eventparam2}}},
         
     CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
-    %%?debugMsg(io_lib:format("CNF: ~p~n",[CNF])),
     PL =  rivus_cep_query_planner:predicates_to_list(CNF),
-    %%?debugMsg(io_lib:format("PredicateList: ~p~n",[PL])),
     PV =  rivus_cep_query_planner:get_predicate_variables(PL),
-    %%?debugMsg(io_lib:format("PredicateVars: ~p~n",[PV])),
     
     %{a,b} - choice "a or b"
     %[a,b] - sequence "a then b"	
