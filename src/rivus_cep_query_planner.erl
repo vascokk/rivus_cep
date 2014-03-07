@@ -85,9 +85,7 @@ distribute_or_over_and(Predicate) ->
     Predicate.
 
 pattern_to_graph(PredVars, Pattern) ->
-    G = digraph:new(),
-    %%Start = digraph:add_vertex(G,  get_start_state(Pattern)),
-    pattern_to_graph(start, PredVars, Pattern, G).
+    pattern_to_graph(start, PredVars, Pattern, digraph:new()).
 
 
 pattern_to_graph(start, PredVars, [First,Second|T], G) when is_atom(First), is_atom(Second) ->
@@ -127,17 +125,16 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
 				digraph:add_edge(G, E, FV, SV, Labels),
 				
 				%%digraph:add_edge(G, FV, SV),
-				pattern_to_graph(Start, NewPredVars, L, G),
-				NewPredVars
+				{_, NewPredVars2} = pattern_to_graph(Start, NewPredVars, L, G),
+				NewPredVars2
 			end, PredVars, tuple_to_list(Second)),
     pattern_to_graph(Start, NewPV, [Second|T], G);
 pattern_to_graph(Start, PredVars, [First,Second|_], _) when is_list(First), is_list(Second)->
     erlang:error(unsupported_pattern);
+pattern_to_graph(Start, [], _, G) ->
+	{G, []};
 pattern_to_graph(Start, PredVars, [_|[]], G) ->
-    case PredVars of
-	[] -> G;
-	_ -> erlang:error({unsupported_pattern, "Cannot assign some ofthe predicates.", PredVars})
-    end.
+    erlang:error({unsupported_pattern, "Cannot assign some of the predicates.", PredVars}).
 
 
 set_predicates_on_edge(Start, Second, PredVars, G) ->
@@ -145,7 +142,7 @@ set_predicates_on_edge(Start, Second, PredVars, G) ->
     {NewPredVars,Labels} = lists:foldl(fun({Vars, Predicate}, {PVSet, Acc}) ->
 					       case check_path(CurrentPath, Vars) of
 						   true -> {remove_predicate({Vars,Predicate}, PVSet),
-							     Acc ++ [Predicate]};
+							    Acc ++ [Predicate]};
 						   false -> {PVSet, Acc}
 					       end
 				       end, {ordsets:from_list(PredVars), []}, PredVars),
@@ -158,7 +155,7 @@ check_path(CurrentPath, Vars) ->
 
 %% current predicate will be assigned to edge. remove it from the list ov available predicates
 remove_predicate(Key, PVSet) ->
-  ordsets:del_element(Key, PVSet).
+    ordsets:del_element(Key, PVSet).
 
 get_predicates_on_edge(G, V1, V2) ->
     [Edge] = lists:filter(fun(E) ->
