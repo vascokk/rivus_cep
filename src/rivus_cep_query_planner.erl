@@ -27,21 +27,25 @@
 	 pattern_to_graph/2,
 	 get_start_state/1,
 	 set_predicates_on_edge/4,
-	 get_predicates_on_edge/3]).
+	 get_predicates_on_edge/3,
+	 is_first/2,
+	 is_next/3,
+	 is_last/2]).
 
 
-analyze( [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}]) ->
-    Events = case FromClause of
-		 {pattern, {List}} -> List;
-		 {List} -> List
-	     end,
-    JoinKeys = get_join_keys(Events, WhereClause),
-    #query_plan{join_keys = JoinKeys}.
-
+analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_WithinClause}]) ->
+    case FromClause of
+	{pattern, _} -> CNF =  to_cnf(WhereClause),    
+			PL =  predicates_to_list(CNF),
+			PV =  get_predicate_variables(PL),
+			G =  pattern_to_graph(PV, FromClause),				
+			#query_plan{fsm = G};
+	{EventsList} -> #query_plan{join_keys = get_join_keys(EventsList, WhereClause)}
+    end.
 
 sort_predicates(WhereClause) ->
     PL = predicates_to_list(to_cnf(WhereClause)),
-    VL = get_predicate_variables(lists:flatten(PL)).
+    get_predicate_variables(lists:flatten(PL)).
 
 get_predicate_variables(PL) ->
     [{get_predicate_variables(Predicate, ordsets:new()), Predicate} || Predicate <- PL].
@@ -85,7 +89,8 @@ distribute_or_over_and(Predicate) ->
     Predicate.
 
 pattern_to_graph(PredVars, Pattern) ->
-    pattern_to_graph(start, PredVars, Pattern, digraph:new()).
+    {G,_} = pattern_to_graph(start, PredVars, Pattern, digraph:new()),
+    G.
 
 
 pattern_to_graph(start, PredVars, [First,Second|T], G) when is_atom(First), is_atom(Second) ->
@@ -129,11 +134,11 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
 				NewPredVars2
 			end, PredVars, tuple_to_list(Second)),
     pattern_to_graph(Start, NewPV, [Second|T], G);
-pattern_to_graph(Start, PredVars, [First,Second|_], _) when is_list(First), is_list(Second)->
+pattern_to_graph(_Start, _PredVars, [First,Second|_], _) when is_list(First), is_list(Second)->
     erlang:error(unsupported_pattern);
-pattern_to_graph(Start, [], _, G) ->
+pattern_to_graph(_Start, [], _, G) ->
 	{G, []};
-pattern_to_graph(Start, PredVars, [_|[]], G) ->
+pattern_to_graph(_Start, PredVars, [_|[]], _G) ->
     erlang:error({unsupported_pattern, "Cannot assign some of the predicates.", PredVars}).
 
 
@@ -179,6 +184,16 @@ get_join_keys({EventName, Value}, Event, Acc) ->
     	Event -> ordsets:add_element(Value, Acc);
     	_ -> Acc
     end.
+
+is_first(G, StateName) ->
+    hd(digraph_utils:topsort(G)) == StateName.
+is_next(G, CurrentState, StateName) ->
+   case digraph:get_path(G, CurrentState, StateName) of
+       false -> false;
+       _ -> true
+   end.
+is_last(G, StateName) ->
+    lists:last(digraph_utils:topsort(G)) == StateName.
 
 get_start_state(Pattern) when is_atom(hd(Pattern)) ->
     hd(Pattern);

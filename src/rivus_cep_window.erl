@@ -24,10 +24,14 @@
 
 -export([new/1,
          new/2,
-         update/2,         
+         update/2,
+	 resize/2,
          get_values/1,
 	 select/2,
-	 get_window/1
+	 get_window/1,delete/1,
+	 update_fsm/3,
+	 delete_fsm/2,
+	 get_fsms/1
          ]).
 
 new(Size) ->
@@ -36,24 +40,15 @@ new(Size) ->
 new(Size, slide) ->
     rivus_cep_slide:new(Size).
 
-
 update(Sample, Value) ->
     lager:debug("~nUpdate window:~p, Value: ~p~n",[Sample, Value]),
     rivus_cep_slide:update(Sample, Value).
 
-% pulls the sample out of the record obtained from ets
 get_values(Sample) ->
     rivus_cep_slide:get_values(Sample).
 
 resize(Sample, NewSize) ->
     rivus_cep_slide:resize(Sample, NewSize).
-
-%%just for testing
-select(Sample, "blah") ->
-    Size = Sample#slide.size,
-    Reservoir = Sample#slide.reservoir,    
-    Oldest = rivus_cep_utils:timestamp() - Size,
-    ets:select(Reservoir,   ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(2,Value) == a -> Value end)).
 
 get_window(Sample) ->
     Size = Sample#slide.size,
@@ -61,3 +56,23 @@ get_window(Sample) ->
     Oldest = rivus_cep_utils:timestamp() - Size,
     {Reservoir, Oldest}.
 
+delete(#slide{reservoir = Reservoir, server = Pid}) ->
+    rivus_cep_slide_server:stop(Pid),
+    ets:delete(Reservoir).
+
+update_fsm(Sample, Key, Value) ->
+    rivus_cep_slide:update_fsm(Sample, Key, Value).
+
+delete_fsm(Sample, Key) ->
+    rivus_cep_slide:delete_fsm(Sample, Key).
+
+get_fsms(Sample) ->
+    rivus_cep_slide:get_fsms(Sample).
+
+
+%%just for testing
+select(Sample, "blah") ->
+    Size = Sample#slide.size,
+    Reservoir = Sample#slide.reservoir,    
+    Oldest = rivus_cep_utils:timestamp() - Size,
+    ets:select(Reservoir,   ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(2,Value) == a -> Value end)).

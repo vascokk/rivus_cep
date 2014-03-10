@@ -21,15 +21,11 @@
 			  result = dict:new()		  
 	 }).
 
--record(query_ast,{
-	  select,
-	  from,
-	  where,
-	  within
-	 }).
+
 
 -record(query_plan, {
-	  join_keys = orddict:new()
+	  join_keys = orddict:new(),
+	  fsm
 	 }).  %%will be extended later
 
 

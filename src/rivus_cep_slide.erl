@@ -22,6 +22,9 @@
 	 trim/2,
 	 update/2,
 	 get_values/1,
+	 get_fsms/1,
+	 update_fsm/3,
+	 delete_fsm/2,
 	 delete/1]).
 
 -include("rivus_cep.hrl").
@@ -46,9 +49,21 @@ update(#slide{reservoir = Reservoir} = Window, Value) ->
     ets:insert(Reservoir, {{Now, Rnd}, Value}),
     Window.
 
+update_fsm(#slide{reservoir = Reservoir} = Window, Key, Value) ->
+    ets:update(Reservoir, Key, {1, Value}),
+    Window.
+
 get_values(#slide{reservoir = Reservoir, size = Size}) ->
     Oldest = rivus_cep_utils:timestamp() - Size,
     ets:select(Reservoir, [{{{'$1','_'},'$2'},[{'>=', '$1', Oldest}],['$2']}]).
+
+get_fsms(#slide{reservoir = Reservoir, size = Size}) ->
+    Oldest = rivus_cep_utils:timestamp() - Size,
+    ets:select(Reservoir, [{{{'$1','2'},'$3'},[{'>=', '$1', Oldest}],[{{'$1','$2'},'$3'}]}]).
+
+delete_fsm(#slide{reservoir = Reservoir, size = Size}, FsmId) ->
+    Oldest = rivus_cep_utils:timestamp() - Size,
+    ets:select_delete(Reservoir, [{{{'$1','$2'},'_'},[{'<', '$1', Oldest}, {'==','$2',FsmId}],['true']}]).
 
 delete(#slide{reservoir = Reservoir, server = Pid}) ->
     rivus_cep_slide_server:stop(Pid),
@@ -66,4 +81,5 @@ trim(#slide{reservoir = Reservoir, size = Size}, Fun) when is_function(Fun) ->
     Match = ets:select(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]),
     lists:foreach(fun(X) -> Fun(X) end, Match),
     ets:select_delete(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]).
+
 

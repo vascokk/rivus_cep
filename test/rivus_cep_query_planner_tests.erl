@@ -94,28 +94,11 @@ set_get_predicates_on_edge_test() ->
     digraph:add_edge(G, E1, V1, V2, Label1),
 
     E2 = digraph:add_edge(G, V2, V3, []),    
-    {NewPV2, Label2} = rivus_cep_query_planner:set_predicates_on_edge(Start, V3, NewPV, G),    
+    {_, Label2} = rivus_cep_query_planner:set_predicates_on_edge(Start, V3, NewPV, G),    
     digraph:add_edge(G, E2, V2, V3, Label2),
 
     ?assertEqual(Label1, rivus_cep_query_planner:get_predicates_on_edge(G,V1,V2)),
     ?assertEqual(Label2, rivus_cep_query_planner:get_predicates_on_edge(G,V2,V3)).
-
-
-pattern_to_graph_2_test() ->
-
-    Predicate = {'or',
-    		 {'and',{eq,{b,eventparam1},{c,eventparam2}},
-    		       {eq,{d,eventparam1},{c,eventparam2}}},
-    		 {eq,{x,param1},{d,param1}}},
-
-    CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
-    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
-    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
-    
-    %{a,b} - choice "a or b"
-    %[a,b] - sequence "a then b"	
-    Pattern = [a,b,{{c, {c,d}},{x, {x,d}}}], %% a->b->((c->(c or d)) or (x->(x or d))) - unsupported pattern. cannot assign predicates
-    ?assertError({unsupported_pattern, _, _}, rivus_cep_query_planner:pattern_to_graph(PV, Pattern)).
 
 pattern_to_graph_test() ->
     Predicate = {'and',{eq,{b,eventparam1},{c,eventparam2}},
@@ -129,7 +112,7 @@ pattern_to_graph_test() ->
     %[a,b] - sequence "a then b"	
     Pattern = [a,b,{{c, {c,d}}}], %% a->b->(c->(c or d)) 
 
-    {G, _} =  rivus_cep_query_planner:pattern_to_graph(PV, Pattern),
+    G =  rivus_cep_query_planner:pattern_to_graph(PV, Pattern),
         
     ?assertEqual([], rivus_cep_query_planner:get_predicates_on_edge(G,a,b)),
     ?assertEqual([{eq,{b,eventparam1},{c,eventparam2}}], rivus_cep_query_planner:get_predicates_on_edge(G,b,c)),
@@ -172,6 +155,22 @@ pattern_to_graph_test() ->
     ?assertNot(digraph:get_cycle(G, b)),
     ?assertNot(digraph:get_cycle(G, d)),
     ?assertEqual([c], digraph:get_cycle(G, c)).
+
+pattern_to_graph_2_test() ->
+    Predicate = {'or',
+    		 {'and',{eq,{b,eventparam1},{c,eventparam2}},
+    		       {eq,{d,eventparam1},{c,eventparam2}}},
+    		 {eq,{x,param1},{d,param1}}},
+
+    CNF =  rivus_cep_query_planner:to_cnf(Predicate),    
+    PL =  rivus_cep_query_planner:predicates_to_list(CNF),
+    PV =  rivus_cep_query_planner:get_predicate_variables(PL),
+    
+    %{a,b} - choice "a or b"
+    %[a,b] - sequence "a then b"	
+    Pattern = [a,b,{{c, {c,d}},{x, {x,d}}}], %% a->b->((c->(c or d)) or (x->(x or d))) - unsupported pattern. cannot assign predicates
+    ?assertError({unsupported_pattern, _, _}, rivus_cep_query_planner:pattern_to_graph(PV, Pattern)).
+
     
 get_join_keys_test() ->
     Predicate =  {eq,{event1,eventparam1},{event2, eventparam1}},

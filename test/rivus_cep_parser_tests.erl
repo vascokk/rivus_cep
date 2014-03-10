@@ -14,7 +14,7 @@
 	        ts}).
 
 parse_query_1_test()->
-    {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select eventparam
                                                          from event1; ", 1),
     ?assertEqual({ok,[{correlation1},
@@ -22,14 +22,14 @@ parse_query_1_test()->
     		 rivus_cep_parser:parse(Tokens)).
 
 parse_query_2_test() ->
-    {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select eventparam1, eventparam2
                                                          from event1, event2; ", 1),
 
     ?assertError({error, missing_event_qualifier}, rivus_cep_parser:parse(Tokens)).
 
 parse_query_3_test() ->
-        {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
+        {ok, Tokens, _Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select eventparam1
                                                          from event1
                                                          where eventparam1 = 20
@@ -45,7 +45,7 @@ parse_query_3_test() ->
 
 
 parse_query_4_test() ->
-        {ok, Tokens, Endline} = rivus_cep_scanner:string("define correlation1 as
+        {ok, Tokens, _Endline} = rivus_cep_scanner:string("define correlation1 as
                                                          select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
                                                          from event1 as ev1, event2 as ev2
                                                          where ev1.eventparam1 = ev2.eventparam2 and ev1.eventparam1 > ev2.eventparam2
@@ -62,7 +62,7 @@ parse_query_4_test() ->
 		 rivus_cep_parser:parse(Tokens)).
 
 parse_query_5_test() ->
-        {ok, Tokens, Endline} = rivus_cep_scanner:string(
+        {ok, Tokens, _Endline} = rivus_cep_scanner:string(
 	   "define correlation1 as
       select ev1.eventparam1, ev2.eventparam2,
              ((ev1.eventparam1 + ev2.eventparam2 * 5 + 6) + ev2.eventparam4) - ev1.eventparam1, ev2.eventparam3
@@ -89,7 +89,7 @@ parse_query_5_test() ->
 		      {60}]},
 		 rivus_cep_parser:parse(Tokens)).
 parse_query_6_test() ->
-        {ok, Tokens, Endline} = rivus_cep_scanner:string(
+        {ok, Tokens, _Endline} = rivus_cep_scanner:string(
 	   "define correlation1 as
       select ev1.eventparam1, sum(ev2.eventparam2),
              ((ev1.eventparam1 + ev2.eventparam2 * 5 + 6) + ev2.eventparam4) - ev1.eventparam1, count(ev2.eventparam3)
@@ -117,7 +117,7 @@ parse_query_6_test() ->
 		 rivus_cep_parser:parse(Tokens)).
 
 parse_pattern_test() ->
-        {ok, Tokens, Endline} = rivus_cep_scanner:string("define pattern1 as
+        {ok, Tokens, _Endline} = rivus_cep_scanner:string("define pattern1 as
                                                          select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
                                                          from event1 as ev1 -> event2 as ev2
                                                          where ev1.eventparam1 = ev2.eventparam2 and ev1.eventparam1 > ev2.eventparam2
@@ -135,7 +135,7 @@ parse_pattern_test() ->
 
 
 parse_pattern_2_test() ->
-        {ok, Tokens, Endline} = rivus_cep_scanner:string("define pattern1 as
+        {ok, Tokens, _Endline} = rivus_cep_scanner:string("define pattern1 as
                                                          select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
                                                          from event1 as ev1 -> event2 as ev2 -> event3 as ev3
                                                          where ev1.eventparam1 = ev2.eventparam2 and ev2.eventparam1 = ev3.eventparam2

@@ -84,20 +84,20 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
-handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, From, #state{query_sup=QuerySup, win_register = WinReg} = State) ->
+handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{query_sup=QuerySup, win_register = WinReg} = State) ->
     QueryClauses = parse_query(QueryStr),
     Producers = case _Producers of
 	[] -> [any];
 	_ -> _Producers
     end,
-    {QueryWindow, NewWinReg} = register_windows(QueryClauses, Producers, Options, WinReg),
-    QueryModArgs = {QueryClauses, Producers, Subscribers, Options, QueryWindow, NewWinReg},
+    {EventWindow, FsmWindow, NewWinReg} = register_windows(QueryClauses,  Options, WinReg),
+    QueryModArgs = {QueryClauses, Producers, Subscribers, Options, EventWindow, FsmWindow, NewWinReg},
     
     lager:debug("Query sup, Args: ~p~n",[QueryModArgs]),
     
     {ok, Pid} = supervisor:start_child(QuerySup, [QueryModArgs]),
     {reply, {ok,Pid}, State#state{win_register=NewWinReg}};
-handle_call({notify, Producer, Event}, From, #state{win_register = WinReg} = State) ->
+handle_call({notify, Producer, Event}, _From, #state{win_register = WinReg} = State) ->
     EventName = element(1, Event),
     gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
     case dict:is_key(EventName, WinReg) of
@@ -107,7 +107,7 @@ handle_call({notify, Producer, Event}, From, #state{win_register = WinReg} = Sta
 	false -> ok
     end,    
     {reply, ok, State};
-handle_call(Msg, From, State) ->
+handle_call(_Msg, _From, State) ->
     {reply, not_handled, State}.
 
 handle_info({start_query_supervisor, Supervisor, QuerySupSpec}, State) ->
@@ -127,33 +127,35 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%--------------------------------------------------------------------
 parse_query(QueryStr) ->    
-    {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
+    {ok, Tokens, _} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),
     QueryClauses.
 
-register_windows([StmtName, {SelectClause}, FromClause, {WhereClause}, {WithinClause}], Producers, Options, WinReg) ->
+register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, {WithinClause}], Options, WinReg) ->
     {QueryType, Events} = case FromClause of
-			      {pattern, {Events}} -> {pattern, Events};
-			      {Events} -> {simple, Events}
+			      {pattern, {List}} -> {pattern, List};
+			      {List} -> {simple, List}
 			  end,    
     SharedStreams = proplists:get_value(shared_streams, Options, false),
-    QueryWindow = case {QueryType, SharedStreams} of
-		      {pattern,_} -> register_local_window(WithinClause, WinReg);
-		      {simple, true} -> register_global_windows(Events, Producers, WithinClause, WinReg);
-		      _ -> register_local_window(WithinClause, WinReg)
-		  end.
-    
-register_local_window(WithinClause, WinReg) ->
-    {rivus_cep_window:new(WithinClause), WinReg}.
+    case {QueryType, SharedStreams} of
+	{pattern, _} -> {register_local_window(WithinClause), register_local_window(WithinClause), WinReg};
+	{simple, true} -> {global, nil, register_global_windows(Events, WithinClause, WinReg)};
+	_ -> {register_local_window(WithinClause), register_local_window(WithinClause), WinReg}
+    end.
 
-register_global_windows(Events, Producers, WithinClause, WinReg) ->
+
+
+register_local_window(WithinClause) ->
+    rivus_cep_window:new(WithinClause).
+
+register_global_windows(Events, WithinClause, WinReg) ->
     NewWinReg = lists:foldl(fun(Event, Register) -> case dict:is_key(Event, Register) of
 							true -> maybe_update_window_size(Event, Register, WithinClause);
 							false -> create_new_global_window(Event, Register, WithinClause)
 						    end
 			    end, WinReg, Events),
     lager:debug("Windows Register: ~p~n",[NewWinReg]),
-    {global, NewWinReg}.
+    NewWinReg.
 
 maybe_update_window_size(Event, WinReg, WithinClause) ->
     Window = dict:fetch(Event, WinReg),

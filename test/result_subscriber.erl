@@ -12,15 +12,15 @@ init([]) ->
     gproc:reg({p, l, {self(), result_subscribers}}),
     {ok, ok}.
 
-handle_call(stop, From, State) ->
+handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
-handle_call(get_result, From, State) ->
+handle_call(get_result, _From, State) ->
     {reply, {ok, State}, State}.
 
-handle_info(timeout,State) ->
+handle_info(timeout, State) ->
     {stop,normal,State};
 
-handle_info(_Info, State) ->
+handle_info(_Info, _State) ->
     ?debugMsg(io_lib:format("Info: ~p~n",[_Info])),
     {noreply, _Info, 50000}.
 
