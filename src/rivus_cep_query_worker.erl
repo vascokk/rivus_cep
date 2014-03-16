@@ -174,8 +174,9 @@ eval_fsm_predicates(Fsm, EventName, Event, State) ->
     Predicates = rivus_cep_query_planner:get_predicates_on_edge(G, Fsm#fsm.fsm_state, EventName),
     case Predicates of
 	[] -> true; %% no predicates on edge => can do transition
-	_ -> Events = rivus_cep_query_planner:get_events_on_path(G, EventName),
-	     eval_fsm_predicates(Fsm, Event, Predicates, Events, State)    
+	_ -> SinglePredicate = rivus_cep_query_planner:to_single_predicate(Predicates),
+	    Events = rivus_cep_query_planner:get_events_on_path(G, EventName),
+	     eval_fsm_predicates(Fsm, Event, SinglePredicate, Events, State)    
     end.
 
 eval_fsm_predicates(Fsm, Event, Predicates, Events, _State) ->
@@ -189,9 +190,9 @@ eval_fsm_predicates(Fsm, Event, Predicates, Events, _State) ->
     PreResultSet = [qlc:e(QH) || QH <- QueryHandlers ],    
  
     
-    lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
+    lager:debug("---> Pre-Result Set: ~p", [PreResultSet++ [[Event]]]),
 
-    CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], PreResultSet ++ [Event]),
+    CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], lists:filter(fun(L) -> L /=[] end, PreResultSet) ++ [[Event]]),
 
     lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
 
@@ -281,8 +282,6 @@ where_eval({Type, Value}, ResRecord) ->
 
     end.
 
-
-
 select_eval({integer, Value}, _) ->
      Value;
 select_eval({float, Value}, _) ->
@@ -308,8 +307,7 @@ build_select_clause([H|T], EventList, Acc) ->
 build_select_clause([], _, Acc) ->
      Acc.
        
- is_initial_state(EventName, State) ->
-    %% EventName == rivus_cep_query_planner:get_start_state(Ast#query_ast.from).
+is_initial_state(EventName, State) ->
     rivus_cep_query_planner:is_first(State#state.query_plan#query_plan.fsm, EventName) .
 
 create_new_fsm(EventName, Event, #state{fsm_window = FsmWindow} = State) ->
@@ -350,6 +348,8 @@ eval_fsm_state(EventName, FsmKey, Fsm, State) ->
     FsmWindow = State#state.fsm_window,
     case rivus_cep_query_planner:is_last(Fsm#fsm.fsm_graph, EventName) of
 	true -> eval_fsm_result(Fsm#fsm{fsm_state = EventName}, EventName, State),
+		    lager:debug("Delete FsmID: ~p~n",[FsmKey]),
+
 		rivus_cep_window:delete_fsm(FsmWindow, FsmKey);
 	false -> rivus_cep_window:update_fsm(FsmWindow, FsmKey, Fsm#fsm{fsm_state = EventName})
     end.

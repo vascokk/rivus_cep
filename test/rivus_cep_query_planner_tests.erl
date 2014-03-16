@@ -21,6 +21,27 @@ to_cnf_4_test() ->
     Predicate = {neg,{'or', p, {'and', q, r}}},
     ?assertEqual({'and',{neg,p},{'or',{neg,q},{neg,r}}}, rivus_cep_query_planner:to_cnf(Predicate)).
 
+to_single_predicate_test() ->
+    ?assertEqual({eq,{event1,eventparam2},{event2,eventparam2}}, rivus_cep_query_planner:to_single_predicate(
+								   [{eq,{event1,eventparam2},{event2,eventparam2}}])),
+    ?assertEqual({'and',
+		  {eq,{event1,eventparam2},{event2,eventparam2}},
+		  {eq,{event3,eventparam2},{event4,eventparam2}}},
+		 rivus_cep_query_planner:to_single_predicate(
+		   [{eq,{event1,eventparam2},{event2,eventparam2}},
+		    {eq,{event3,eventparam2},{event4,eventparam2}}])),
+    ?assertEqual({'and',
+		  {'and',
+		   {eq,{event1,eventparam2},{event2,eventparam2}},
+		   {eq,{event3,eventparam2},{event4,eventparam2}}},
+		  {eq,{event5,eventparam2},{event6,eventparam2}}
+		 },
+		 rivus_cep_query_planner:to_single_predicate(
+		   [{eq,{event1,eventparam2},{event2,eventparam2}},
+		    {eq,{event3,eventparam2},{event4,eventparam2}},
+		    {eq,{event5,eventparam2},{event6,eventparam2}}])).
+
+
 predicates_to_list_1_test()->
     Predicate = {'and', p, q},
     CNF =  rivus_cep_query_planner:to_cnf(Predicate),

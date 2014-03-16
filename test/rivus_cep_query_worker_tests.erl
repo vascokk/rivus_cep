@@ -17,11 +17,11 @@ query_worker_test_() ->
 		ok = application:stop(rivus_cep)
      end,
 
-     [%%{"Test query without aggregations",
-      %%  fun query_1/0},
-      %% {"Test an aggregation query",
-      %%  fun query_2/0},
-      {"Tes query on event sequence (event pattern matching)",
+     [{"Test query without aggregations",
+       fun query_1/0},
+      {"Test an aggregation query",
+       fun query_2/0},
+      {"Test query on event sequence (event pattern matching)",
        fun pattern/0}
      ]
     }.
@@ -37,7 +37,7 @@ query_1() ->
     Window = rivus_cep_window:new(60),
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_1], [Pid], [], Window, nil}),
+    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_1], [Pid], [], Window, nil, nil}),
     
     Event1 = {event1, 10,b,c}, 
     Event2 = {event1, 15,bbb,c},
@@ -71,7 +71,7 @@ query_2()->
 
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_2], [Pid], [], Window, nil}),
+    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_2], [Pid], [], Window, nil, nil}),
     
     %% send some events
     Event1 = {event1, gr1,b,10}, 
@@ -105,11 +105,12 @@ pattern() ->
                       where ev1.eventparam2 = ev2.eventparam2
                       within 60 seconds; ",
     Window = rivus_cep_window:new(60),
+    FsmWindow = rivus_cep_window:new(60),
 
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_pattern_1], [Pid], [], Window, nil}),
-   
+    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_pattern_1], [Pid], [], Window, FsmWindow, nil}),
+
     Event1 = {event1, 10,b,10}, 
     Event2 = {event1, 15,bbb,20},
     Event3 = {event1, 20,b,10},

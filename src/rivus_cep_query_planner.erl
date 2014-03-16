@@ -21,6 +21,7 @@
 
 -export([analyze/1, get_join_keys/2,
 	 to_cnf/1,
+	 to_single_predicate/1,
 	 predicates_to_list/1,
 	 get_predicate_variables/1,
 	 sort_predicates/1,
@@ -28,6 +29,7 @@
 	 get_start_state/1,
 	 set_predicates_on_edge/4,
 	 get_predicates_on_edge/3,
+	 get_events_on_path/2,
 	 is_first/2,
 	 is_next/3,
 	 is_last/2]).
@@ -35,11 +37,11 @@
 
 analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_WithinClause}]) ->
     case FromClause of
-	{pattern, _} -> CNF =  to_cnf(WhereClause),    
-			PL =  predicates_to_list(CNF),
-			PV =  get_predicate_variables(PL),
-			G =  pattern_to_graph(PV, FromClause),				
-			#query_plan{fsm = G};
+	{pattern, {Pattern}} -> CNF =  to_cnf(WhereClause),    
+				PL =  predicates_to_list(CNF),
+				PV =  get_predicate_variables(PL),
+				G =  pattern_to_graph(PV, Pattern),				
+				#query_plan{fsm = G};
 	{EventsList} -> #query_plan{join_keys = get_join_keys(EventsList, WhereClause)}
     end.
 
@@ -71,6 +73,12 @@ to_cnf(WhereClause) ->
     P = move_not_inwards(WhereClause),
     distribute_or_over_and(P).
 
+to_single_predicate(Predicates) ->
+    lists:foldl(fun([],Acc) -> Acc;
+		   (P, Acc) when P /= []-> {'and', Acc, P}
+		end,
+		hd(Predicates), tl(Predicates)).
+
 move_not_inwards({neg,{neg,Predicate}}) ->
     move_not_inwards(Predicate);
 move_not_inwards({neg, {'or', P, Q}}) ->
@@ -91,7 +99,6 @@ distribute_or_over_and(Predicate) ->
 pattern_to_graph(PredVars, Pattern) ->
     {G,_} = pattern_to_graph(start, PredVars, Pattern, digraph:new()),
     G.
-
 
 pattern_to_graph(start, PredVars, [First,Second|T], G) when is_atom(First), is_atom(Second) ->
     FV = digraph:add_vertex(G, First),
@@ -195,8 +202,16 @@ is_next(G, CurrentState, StateName) ->
 is_last(G, StateName) ->
     lists:last(digraph_utils:topsort(G)) == StateName.
 
-get_start_state(Pattern) when is_atom(hd(Pattern)) ->
-    hd(Pattern);
-get_start_state(_) ->
-    erlang:error(badpattern).
 
+get_start_state(Pattern) when is_list(Pattern) andalso is_atom(hd(Pattern)) ->
+    hd(Pattern);
+get_start_state(G) when is_tuple(G) ->
+    case digraph_utils:topsort(G) of
+	false -> erlang:error({badpattern, "Unsupported pattern."});
+	L when is_list(L) -> hd(L)
+    end;
+get_start_state(_) ->
+    erlang:error({badpattern, "Unsupported pattern."}).
+
+get_events_on_path(G, EventName) ->
+    digraph:get_path(G,get_start_state(G), EventName).
