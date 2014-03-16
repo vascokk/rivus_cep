@@ -11,10 +11,12 @@
 
 window_test_() ->
     {setup,
-     fun () -> rivus_cep_slide_ets:start_link(),
-	       rivus_cep_slide_server_sup:start_link()
+     fun () -> 	rivus_cep_slide_ets:start_link(),
+		rivus_cep_slide_server_sup:start_link(),
+		meck:new(rivus_cep_utils),
+		tick(0, 0)
      end,
-     fun (_) -> ok end,
+     fun (_) -> meck:unload(rivus_cep_utils) end,
 
      [{"Create new window & insert event",
        fun new/0},
@@ -39,20 +41,21 @@ window_test_() ->
     }.
 
 new() ->
-     Window = rivus_cep_window:new(2),
-     rivus_cep_window:update(Window, <<"blabla1">>),
-     rivus_cep_window:update(Window, <<"blabla2">>),
-     rivus_cep_window:update(Window, <<"blabla3">>),
-     ?assertEqual([<<"blabla1">>, <<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)).
+    Window = rivus_cep_window:new(2),
+    rivus_cep_window:update(Window, <<"blabla1">>),
+    rivus_cep_window:update(Window, <<"blabla2">>),
+    rivus_cep_window:update(Window, <<"blabla3">>),
+    ?assertEqual([<<"blabla1">>, <<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)).
 
 new_sliding() ->   
-     Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
-     rivus_cep_window:update(Window, <<"blabla1">>),
-     rivus_cep_window:update(Window, <<"blabla2">>),
-     rivus_cep_window:update(Window, <<"blabla3">>),
-     ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)),
-     timer:sleep(4000),
-     ?assertEqual([],rivus_cep_window:get_values(Window)).
+    Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
+    rivus_cep_window:update(Window, <<"blabla1">>),
+    rivus_cep_window:update(Window, <<"blabla2">>),
+    rivus_cep_window:update(Window, <<"blabla3">>),
+    ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)),
+    %%timer:sleep(4000),
+    tick(rivus_cep_utils:timestamp(), 5000),
+    ?assertEqual([],rivus_cep_window:get_values(Window)).
 
 select_2() ->   
      Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
@@ -74,7 +77,8 @@ select_outside() ->
     rivus_cep_window:update(Window, {event1, aa,b,c}),
     rivus_cep_window:update(Window, {event1, a,bbb,c}),
     ?assertEqual([{event1, a,b,c}, {event1, a,bbb,c}], rivus_cep_window:select(Window, "blah")),
-    timer:sleep(4000),
+    %%timer:sleep(4000),
+    tick(rivus_cep_utils:timestamp(), 5000),
     ?assertEqual([],rivus_cep_window:select(Window, "blah")).
 
 
@@ -235,4 +239,12 @@ dynamic_qh() ->
     Sum = lists:foldl(fun(E, Acc) -> element(2, E) + Acc end, 0, sets:to_list(ResSet)),
 
     ?assertEqual(30, Sum ).   
-    
+
+tick(Moment0, IncrBy) ->
+    Moment = Moment0 + IncrBy,
+    meck:expect(rivus_cep_utils, timestamp, fun() ->
+                                                 Moment end),
+    Moment.
+
+tick(Moment) ->
+    tick(Moment, 1).

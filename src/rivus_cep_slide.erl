@@ -62,8 +62,7 @@ get_fsms(#slide{reservoir = Reservoir, size = Size}) ->
     ets:select(Reservoir, [{{{'$1','$2'},'$3'},[{'>=', '$1', Oldest}],['$_']}]).
 
 
-delete_fsm(#slide{reservoir = Reservoir, size = Size}, {Ts,Rnd}) ->
-    Oldest = rivus_cep_utils:timestamp() - Size,
+delete_fsm(#slide{reservoir = Reservoir}, {Ts,Rnd}) ->    
     ets:select_delete(Reservoir, [{{{'$1','$2'},'$3'},[{'andalso',{'==', '$1', Ts}, {'==', '$2',Rnd}}],['true']}]).
 
 delete(#slide{reservoir = Reservoir, server = Pid}) ->
