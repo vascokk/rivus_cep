@@ -326,6 +326,7 @@ create_new_fsm(EventName, Event, #state{fsm_window = FsmWindow} = State) ->
 %% 4 - if (3)==true evaluate WHERE predicates and generate resultset (evaluate SELECT clause)
 %% 4.1 - remove the FSM (i.e. it reached the final state) else do nothing. END.
 %% 5 - if (3)==false (not the last state) - update the FSM state to "EventName"
+
 eval_fsm(EventName, Event, State) ->    
     FsmWindow = State#state.fsm_window,
     Fsms = rivus_cep_window:get_fsms(FsmWindow),
@@ -346,9 +347,8 @@ eval_fsm(EventName, Event, State) ->
 eval_fsm_state(EventName, FsmKey, Fsm, State) ->
     FsmWindow = State#state.fsm_window,
     case rivus_cep_query_planner:is_last(Fsm#fsm.fsm_graph, EventName) of
-	true -> eval_fsm_result(Fsm#fsm{fsm_state = EventName}, EventName, State),
-		    lager:debug("Delete FsmID: ~p~n",[FsmKey]),
-
+	true -> eval_fsm_result(Fsm#fsm{fsm_state = EventName}, EventName, State),		
+		lager:debug("Delete FsmID: ~p~n",[FsmKey]),
 		rivus_cep_window:delete_fsm(FsmWindow, FsmKey);
 	false -> rivus_cep_window:update_fsm(FsmWindow, FsmKey, Fsm#fsm{fsm_state = EventName})
     end.
