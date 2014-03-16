@@ -42,48 +42,57 @@ window_test_() ->
 
 new() ->
     Window = rivus_cep_window:new(2),
+    tick(0,0),
     rivus_cep_window:update(Window, <<"blabla1">>),
     rivus_cep_window:update(Window, <<"blabla2">>),
     rivus_cep_window:update(Window, <<"blabla3">>),
+    tick(0,1),
     ?assertEqual([<<"blabla1">>, <<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)).
 
 new_sliding() ->   
     Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
+    tick(0,0),
     rivus_cep_window:update(Window, <<"blabla1">>),
     rivus_cep_window:update(Window, <<"blabla2">>),
     rivus_cep_window:update(Window, <<"blabla3">>),
     ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)),
     %%timer:sleep(4000),
-    tick(rivus_cep_utils:timestamp(), 5000),
+    tick(0, 5),
     ?assertEqual([],rivus_cep_window:get_values(Window)).
 
 select_2() ->   
-     Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
-     rivus_cep_window:update(Window, <<"blabla1">>),
-     rivus_cep_window:update(Window, <<"blabla2">>),
-     rivus_cep_window:update(Window, <<"blabla3">>),
-     ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:select(Window, "blah")).
+    Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
+    tick(0,0),
+    rivus_cep_window:update(Window, <<"blabla1">>),
+    rivus_cep_window:update(Window, <<"blabla2">>),
+    rivus_cep_window:update(Window, <<"blabla3">>),
+    tick(0,1),
+    ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:select(Window, "blah")).
 
 select() ->
-     Window = rivus_cep_window:new(2, slide),
-     rivus_cep_window:update(Window, {event1, a,b,c}),
-     rivus_cep_window:update(Window, {event1, aa,b,c}),
-     rivus_cep_window:update(Window, {event1, a,bbb,c}),
-     ?assertEqual([{event1, a,b,c}, {event1, a,bbb,c}], rivus_cep_window:select(Window, "blah")).
+    Window = rivus_cep_window:new(2, slide),
+    tick(0,0),
+    rivus_cep_window:update(Window, {event1, a,b,c}),
+    rivus_cep_window:update(Window, {event1, aa,b,c}),
+    rivus_cep_window:update(Window, {event1, a,bbb,c}),
+    tick(0,1),
+    ?assertEqual([{event1, a,b,c}, {event1, a,bbb,c}], rivus_cep_window:select(Window, "blah")).
     
 select_outside() ->
     Window = rivus_cep_window:new(2),
+    tick(0,0),
     rivus_cep_window:update(Window, {event1, a,b,c}),
     rivus_cep_window:update(Window, {event1, aa,b,c}),
     rivus_cep_window:update(Window, {event1, a,bbb,c}),
     ?assertEqual([{event1, a,b,c}, {event1, a,bbb,c}], rivus_cep_window:select(Window, "blah")),
     %%timer:sleep(4000),
-    tick(rivus_cep_utils:timestamp(), 5000),
+    tick(0, 5000),
     ?assertEqual([],rivus_cep_window:select(Window, "blah")).
 
 
 select_using_qlc() ->
     Window = rivus_cep_window:new(60, slide),
+    tick(0,0),
     rivus_cep_window:update(Window, {event1, a,b,c}),
     rivus_cep_window:update(Window, {event1, aa,b,c}),
     rivus_cep_window:update(Window, {event1, a,bbb,c}),
@@ -94,7 +103,7 @@ select_using_qlc() ->
 %%    Sample = Window#histogram.sample,
     Size = Window#slide.size,
     Reservoir = Window#slide.reservoir,    
-    Oldest = rivus_cep_utils:timestamp() - Size,
+    Oldest = tick(0,60) - Size,
 
     Ms1 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event1  -> Value end),
     Ms2 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event2  -> Value end),
