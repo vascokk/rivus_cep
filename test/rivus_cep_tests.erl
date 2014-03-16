@@ -18,14 +18,14 @@ query_worker_test_() ->
 		application:stop(rivus_cep)
      end,
 
-     [{"Test query without aggregations",
-       fun load_query_1/0},
-      {"Test query with aggregation",
-       fun load_query_2/0},
+     [%% {"Test query without aggregations",
+      %%  fun load_query_1/0},
+      %% {"Test query with aggregation",
+      %%  fun load_query_2/0},
       {"Tes query on event sequence (event pattern matching)",
-       fun load_pattern/0},
-       {"Tes query without producers",
-       fun load_query_no_producers/0}
+       fun load_pattern/0}%% ,
+       %% {"Tes query without producers",
+       %% fun load_query_no_producers/0}
      ]
     }.
 

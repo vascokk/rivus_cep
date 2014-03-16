@@ -43,19 +43,19 @@ window_test_() ->
 new() ->
     Window = rivus_cep_window:new(2),
     tick(0,0),
-    rivus_cep_window:update(Window, <<"blabla1">>),
-    rivus_cep_window:update(Window, <<"blabla2">>),
-    rivus_cep_window:update(Window, <<"blabla3">>),
+    rivus_cep_window:update(Window, <<"event1">>),
+    rivus_cep_window:update(Window, <<"event2">>),
+    rivus_cep_window:update(Window, <<"event3">>),
     tick(0,1),
-    ?assertEqual([<<"blabla1">>, <<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)).
+    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Window)).
 
 new_sliding() ->   
     Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
     tick(0,0),
-    rivus_cep_window:update(Window, <<"blabla1">>),
-    rivus_cep_window:update(Window, <<"blabla2">>),
-    rivus_cep_window:update(Window, <<"blabla3">>),
-    ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:get_values(Window)),
+    rivus_cep_window:update(Window, <<"event1">>),
+    rivus_cep_window:update(Window, <<"event2">>),
+    rivus_cep_window:update(Window, <<"event3">>),
+    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Window)),
     %%timer:sleep(4000),
     tick(0, 5),
     ?assertEqual([],rivus_cep_window:get_values(Window)).
@@ -63,11 +63,11 @@ new_sliding() ->
 select_2() ->   
     Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
     tick(0,0),
-    rivus_cep_window:update(Window, <<"blabla1">>),
-    rivus_cep_window:update(Window, <<"blabla2">>),
-    rivus_cep_window:update(Window, <<"blabla3">>),
+    rivus_cep_window:update(Window, <<"event1">>),
+    rivus_cep_window:update(Window, <<"event2">>),
+    rivus_cep_window:update(Window, <<"event3">>),
     tick(0,1),
-    ?assertEqual([<<"blabla1">>,<<"blabla2">>,<<"blabla3">>],rivus_cep_window:select(Window, "blah")).
+    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:select(Window, "blah")).
 
 select() ->
     Window = rivus_cep_window:new(2, slide),
