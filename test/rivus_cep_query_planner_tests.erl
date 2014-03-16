@@ -214,8 +214,8 @@ get_join_keys_3_test() ->
 
 get_start_state_test() ->
     ?assertEqual(a, rivus_cep_query_planner:get_start_state([a,b,c])),
-    ?assertError(badpattern, rivus_cep_query_planner:get_start_state([[a,b],c,d])),
-    ?assertError(badpattern, rivus_cep_query_planner:get_start_state([{a,b},c,d])).
+    ?assertError({badpattern,_}, rivus_cep_query_planner:get_start_state([[a,b],c,d])),
+    ?assertError({badpattern,_}, rivus_cep_query_planner:get_start_state([{a,b},c,d])).
 
 
     
