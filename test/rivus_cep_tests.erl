@@ -75,7 +75,11 @@ load_query_1() ->
     
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
-    ?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    ?assertEqual(2, length(Values)),
+    ?assert(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
+    
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
     
@@ -108,7 +112,11 @@ load_query_2() ->
     timer:sleep(2000),
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
-    ?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
+    %%?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
+    ?assertEqual(2, length(Values)),
+    ?assert(lists:any(fun(T) -> T == {gr1,b,80} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {gr3,b,80} end, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -172,7 +180,11 @@ load_query_no_producers() ->
     
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
-    ?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    ?assertEqual(2, length(Values)),
+    ?assert(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
+    
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -203,7 +215,11 @@ shared_streams_1() ->
     
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
-    ?assertEqual([{10,b,50,b},{20,b,50,b}], Values),
+    %%?assertEqual([{10,b,50,b},{20,b,50,b}], Values),
+    ?assertEqual(2, length(Values)),
+    ?assert(lists:any(fun(T) -> T == {10,b,50,b} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {20,b,50,b} end, Values)),
+    
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -236,6 +252,12 @@ shared_streams_2() ->
     timer:sleep(2000),
     {ok,Values} = gen_server:call(Pid, get_result),
     %%result will includes the events generated in the previous test 
-    ?assertEqual([{20,b,130},{10,b,130},{gr1,b,130},{gr3,b,130}], Values), 
+    %%?assertEqual([{20,b,130},{10,b,130},{gr1,b,130},{gr3,b,130}], Values),
+    ?assertEqual(4, length(Values)),
+    ?assert(lists:any(fun(T) -> T == {20,b,130} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {10,b,130} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {gr1,b,130} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {gr3,b,130} end, Values)),
+	    
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
