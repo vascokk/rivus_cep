@@ -77,8 +77,6 @@ For each event type there must be a module implementing the `event_behavior` wit
 For memory efficiency, `{shared_streams, true}` can be provided in the options list. In this case, the query will work with a shared event sliding window. The window's size will be equal of the maximum "within" clause of all sharing queries.
 Queries based on event pattern use only non-shared windows.
 
-Only "strict" event patterns are supported at the moment. This means, for a pattern "event1 -> event2", if some other event is received in between (event1->other event->event2), the query won't generate any result.
-
 See some DSL examples in `test/rivus_cep_parser_tests.erl`.
 
 ###Dependencies
