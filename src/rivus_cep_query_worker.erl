@@ -324,9 +324,8 @@ create_new_fsm(EventName, Event, #state{fsm_window = FsmWindow} = State) ->
 %% 2 - if (1)==true update the event window, goto(3) else END
 %% 3 - check if the new state is the last FSM state
 %% 4 - if (3)==true evaluate WHERE predicates and generate resultset (evaluate SELECT clause)
-%% 5 - if the result from (4) != [] remove the FSM (i.e. it reached the final state) else do nothing
-%% 6 - if the result from (4) != [] and EventName is the first state - create a new FSM and put it in the fsm_window
-%% 7 - if (3)==false update the FSM state to "EventName"
+%% 4.1 - remove the FSM (i.e. it reached the final state) else do nothing. END.
+%% 5 - if (3)==false (not the last state) - update the FSM state to "EventName"
 eval_fsm(EventName, Event, State) ->    
     FsmWindow = State#state.fsm_window,
     Fsms = rivus_cep_window:get_fsms(FsmWindow),
