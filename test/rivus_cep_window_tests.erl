@@ -8,15 +8,18 @@
 -include_lib("stdlib/include/qlc.hrl").
 
 -include("rivus_cep.hrl").
+-include_lib("../deps/folsom/include/folsom.hrl").
 
 window_test_() ->
     {setup,
-     fun () -> 	rivus_cep_slide_ets:start_link(),
-		rivus_cep_slide_server_sup:start_link(),
-		meck:new(rivus_cep_utils),
-		tick(0, 0)
+     fun () ->
+	     folsom:start(),
+	     meck:new(folsom_utils),
+	     tick(0, 0)
      end,
-     fun (_) -> meck:unload(rivus_cep_utils) end,
+     fun (_) ->
+	     folsom:stop(),
+	     meck:unload(folsom_utils) end,
 
      [{"Create new window & insert event",
        fun new/0},
@@ -99,9 +102,7 @@ select_using_qlc() ->
     rivus_cep_window:update(Window, {event2, a,bb,cc,d}),
     rivus_cep_window:update(Window, {event2, a,bb,cc,dd}),
 
-%%    Window = folsom_metrics_histogram:get_value(as),
-%%    Sample = Window#histogram.sample,
-    Size = Window#slide.size,
+    Size = Window#slide.window,
     Reservoir = Window#slide.reservoir,    
     Oldest = tick(0,60) - Size,
 
@@ -251,7 +252,7 @@ dynamic_qh() ->
 
 tick(Moment0, IncrBy) ->
     Moment = Moment0 + IncrBy,
-    meck:expect(rivus_cep_utils, timestamp, fun() ->
+    meck:expect(folsom_utils, now_epoch, fun() ->
                                                  Moment end),
     Moment.
 

@@ -1,6 +1,7 @@
 -module(rivus_cep_slide_tests).
 -include_lib("eunit/include/eunit.hrl").
 -include("rivus_cep.hrl").
+-include_lib("../deps/folsom/include/folsom.hrl").
 
 -define(SIZE, 30).
 -define(DOUBLE_SIZE, 60).
@@ -9,11 +10,12 @@
 
 slide_test_() ->
     {setup,
-     fun () -> rivus_cep_slide_ets:start_link(),
-	       rivus_cep_slide_server_sup:start_link()
+     fun () ->
+	     folsom:start(),
+	     meck:new(folsom_utils)
      end,
-     fun (_) -> 
-	     ok
+     fun (_) -> meck:unload(folsom_utils),
+		folsom:stop()
      end,
      [{"Create sliding window",
        fun create/0},
@@ -29,7 +31,7 @@ slide_test_() ->
 create() ->
     Window = rivus_cep_slide:new(?SIZE),    
     ?assert(is_pid(Window#slide.server)),
-    ?assertEqual(?SIZE, Window#slide.size),
+    ?assertEqual(?SIZE, Window#slide.window),
     ?assertEqual(0, ets:info(Window#slide.reservoir, size)).
 
 slide() ->
@@ -37,7 +39,7 @@ slide() ->
     %% unless we call trim
     %% so kill the trim server process
     Window = rivus_cep_slide:new(?SIZE),
-    ok = rivus_cep_slide_server:stop(Window#slide.server),
+    ok = folsom_sample_slide_server:stop(Window#slide.server),
     Moments = lists:seq(1, ?RUNTIME),
     %% pump in 90 seconds worth of readings
     Moment = lists:foldl(fun(_X, Tick) ->
@@ -163,8 +165,8 @@ shrink_window() ->
 
 tick(Moment0, IncrBy) ->
     Moment = Moment0 + IncrBy,
-    meck:expect(rivus_cep_utils, timestamp, fun() ->
-                                                  Moment end),
+    meck:expect(folsom_utils, now_epoch, fun() ->
+						 Moment end),
     Moment.
 
 tick(Moment) ->

@@ -7,14 +7,18 @@
 
 query_worker_test_() ->
     {setup,
-     fun () -> lager:start(),
-	       application:start(gproc),
-	       lager:set_loglevel(lager_console_backend, debug),
-	       ok = application:start(rivus_cep)
+     fun () ->
+	     folsom:start(),
+	     lager:start(),
+	     application:start(gproc),
+	     lager:set_loglevel(lager_console_backend, debug),
+	     ok = application:start(rivus_cep)
      end,
-     fun (_) -> application:stop(lager),
-		application:stop(gproc),
-		ok = application:stop(rivus_cep)
+     fun (_) ->
+	     folsom:stop(),
+	     application:stop(lager),
+	     application:stop(gproc),
+	     ok = application:stop(rivus_cep)
      end,
 
      [{"Test query without aggregations",

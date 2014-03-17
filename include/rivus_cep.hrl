@@ -26,9 +26,5 @@
 -record(query_plan, {
 	  join_keys = orddict:new(),
 	  fsm
-	 }).  %%will be extended later
+	 }). 
 
-
--record(slide,{size,
-	       reservoir = rivus_cep_slide_ets:new(rivus_slide, [duplicate_bag, {write_concurrency, true}, public]),
-	       server}).

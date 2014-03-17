@@ -21,6 +21,7 @@
 -include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -include("rivus_cep.hrl").
+-include_lib("../deps/folsom/include/folsom.hrl").
 
 -export([new/1,
          new/2,
@@ -28,11 +29,10 @@
 	 resize/2,
          get_values/1,
 	 select/2,
-	 get_window/1,delete/1,
+	 get_window/1,
 	 update_fsm/3,
 	 delete_fsm/2,
-	 get_fsms/1
-         ]).
+	 get_fsms/1 ]).
 
 new(Size) ->
     rivus_cep_slide:new(Size).
@@ -51,14 +51,10 @@ resize(Sample, NewSize) ->
     rivus_cep_slide:resize(Sample, NewSize).
 
 get_window(Sample) ->
-    Size = Sample#slide.size,
+    Size = Sample#slide.window,
     Reservoir = Sample#slide.reservoir,    
     Oldest = rivus_cep_utils:timestamp() - Size,
     {Reservoir, Oldest}.
-
-delete(#slide{reservoir = Reservoir, server = Pid}) ->
-    rivus_cep_slide_server:stop(Pid),
-    ets:delete(Reservoir).
 
 update_fsm(Sample, Key, Value) ->
     rivus_cep_slide:update_fsm(Sample, Key, Value).
@@ -72,7 +68,7 @@ get_fsms(Sample) ->
 
 %%just for testing
 select(Sample, "blah") ->
-    Size = Sample#slide.size,
+    Size = Sample#slide.window,
     Reservoir = Sample#slide.reservoir,    
     Oldest = rivus_cep_utils:timestamp() - Size,
     ets:select(Reservoir,   ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(2,Value) == a -> Value end)).

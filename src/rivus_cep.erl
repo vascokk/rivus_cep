@@ -18,14 +18,23 @@
 -behaviour(gen_server).
 -compile([{parse_transform, lager_transform}]).
 
--export([start_link/1, load_query/4, notify/1, notify/2, notify_sync/1, notify_sync/2]).
+%% API
+-export([start_link/1,
+	 load_query/4,
+	 load_query/3,
+	 notify/1,
+	 notify/2,
+	 notify_sync/1,
+	 notify_sync/2]).
 
+%% gen_server API
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 
 -include("rivus_cep.hrl").
+-include_lib("../deps/folsom/include/folsom.hrl").
 
 -record(state, {query_sup,
 	        win_register = dict:new()}).
@@ -39,6 +48,9 @@ start_link(Supervisor) ->
 load_query(QueryStr, Producers, Subscribers, Options) ->
     gen_server:call(?SERVER, {load_query, [QueryStr, Producers, Subscribers, Options]}).
 
+load_query(QueryStr, Partition, Options) ->
+    gen_server:call(?SERVER, {load_query, [QueryStr, [Partition], [], Options ++ [{use_riak, true}]]}).
+    
 notify(Event) ->
     notify(any, Event).
 
@@ -68,7 +80,6 @@ init([Supervisor]) ->
 %%--------------------------------------------------------------------
 %% gen_server functions
 %%--------------------------------------------------------------------
-
 handle_cast({notify, Producer, Event}, #state{win_register = WinReg} = State) ->
     EventName = element(1, Event),
     gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
@@ -159,7 +170,7 @@ register_global_windows(Events, WithinClause, WinReg) ->
 
 maybe_update_window_size(Event, WinReg, WithinClause) ->
     Window = dict:fetch(Event, WinReg),
-    Size = Window#slide.size,
+    Size = Window#slide.window,
     case Size < WithinClause of
 	true -> NewWindow = rivus_cep_window:resize(Window, WithinClause),
 		dict:store(Event, NewWindow, WinReg);
