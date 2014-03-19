@@ -24,7 +24,8 @@
 	 get_values/1,
 	 get_fsms/1,
 	 update_fsm/3,
-	 delete_fsm/2]).
+	 delete_fsm/2,
+	 get_window/1]).
 
 -include("rivus_cep.hrl").
 -include_lib("../deps/folsom/include/folsom.hrl").
@@ -38,6 +39,12 @@ new(Size) ->
 
 resize(Window, NewSize) ->
     folsom_sample_slide:resize(Window, NewSize).
+
+get_window(Sample) ->
+    Size = Sample#slide.window,
+    Reservoir = Sample#slide.reservoir,    
+    Oldest = rivus_cep_utils:timestamp() - Size,
+    {Reservoir, Oldest}.
 
 update(Window, Value) ->
     folsom_sample_slide:update(Window, Value).

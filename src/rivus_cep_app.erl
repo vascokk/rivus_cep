@@ -30,6 +30,7 @@ stop() ->
 start(_StartType, _StartArgs) ->
     case rivus_cep_sup:start_link() of
 	{ok, Pid} ->
+	    {ok, _} = rivus_cep_window:start_link(),
 	    {ok, Pid};
 	Error ->
 	    Error

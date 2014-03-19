@@ -15,6 +15,7 @@
 %%------------------------------------------------------------------------------
 
 -module(rivus_cep_window).
+-behaviour(gen_server).
 
 -compile([{parse_transform, lager_transform}]).
 
@@ -28,47 +29,94 @@
          update/2,
 	 resize/2,
          get_values/1,
-	 select/2,
 	 get_window/1,
 	 update_fsm/3,
 	 delete_fsm/2,
-	 get_fsms/1 ]).
+	 get_fsms/1,
+	 start_link/0]).
+
+-record(state,{provider}).
+
+-define(SERVER, ?MODULE).
+
+
+%% gen_server API
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+init([]) ->
+    lager:info("--- rivus_cep: Window server started"),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, #state{provider = Mod}}.
 
 new(Size) ->
-    rivus_cep_slide:new(Size).
+    gen_server:call(?SERVER, {new, Size}).
 
 new(Size, slide) ->
-    rivus_cep_slide:new(Size).
+    gen_server:call(?SERVER, {new, Size}).
 
 update(Sample, Value) ->
-    lager:debug("~nUpdate window:~p, Value: ~p~n",[Sample, Value]),
-    rivus_cep_slide:update(Sample, Value).
+    gen_server:call(?SERVER, {update, Sample, Value}).
 
 get_values(Sample) ->
-    rivus_cep_slide:get_values(Sample).
+    gen_server:call(?SERVER, {get_value, Sample}).
 
 resize(Sample, NewSize) ->
-    rivus_cep_slide:resize(Sample, NewSize).
+    gen_server:call(?SERVER, {resize, Sample, NewSize}).
 
 get_window(Sample) ->
-    Size = Sample#slide.window,
-    Reservoir = Sample#slide.reservoir,    
-    Oldest = rivus_cep_utils:timestamp() - Size,
-    {Reservoir, Oldest}.
+    gen_server:call(?SERVER, {get_window, Sample}).
 
 update_fsm(Sample, Key, Value) ->
-    rivus_cep_slide:update_fsm(Sample, Key, Value).
-
-delete_fsm(Sample, Key) ->
-    rivus_cep_slide:delete_fsm(Sample, Key).
+    gen_server:call(?SERVER, {update_fsm, Sample, Key, Value}).
 
 get_fsms(Sample) ->
-    rivus_cep_slide:get_fsms(Sample).
+    gen_server:call(?SERVER, {get_fsm, Sample}).
+
+delete_fsm(Sample, Key) ->
+    gen_server:call(?SERVER, {delete_fsm, Sample, Key}).
+
+handle_cast(_Msg, State) -> 
+    {noreply, State}.
 
 
-%%just for testing
-select(Sample, "blah") ->
-    Size = Sample#slide.window,
-    Reservoir = Sample#slide.reservoir,    
-    Oldest = rivus_cep_utils:timestamp() - Size,
-    ets:select(Reservoir,   ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(2,Value) == a -> Value end)).
+handle_call({new, Size}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:new(Size),
+    {reply, Res, State};
+handle_call({new, slide, Size}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:new(Size),
+    {reply, Res, State};
+handle_call({update, Sample, Value}, _From, #state{provider=Mod} = State) ->
+    lager:debug("~nUpdate window:~p, Value: ~p~n",[Sample, Value]),
+    Res = Mod:update(Sample, Value),
+    {reply, Res, State};
+handle_call({get_value, Sample}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:get_values(Sample),
+    {reply, Res, State};
+handle_call({resize, Sample, NewSize}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:resize(Sample, NewSize),
+    {reply, Res, State};
+handle_call({get_window, Sample}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:get_window(Sample),
+    {reply, Res, State};
+handle_call({update_fsm, Sample, Key, Value}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:update_fsm(Sample, Key, Value),
+    {reply, Res, State};
+handle_call({get_fsm, Sample}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:get_fsms(Sample),
+    {reply, Res, State};
+handle_call({delete_fsm, Sample, Key}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:delete_fsm(Sample, Key),
+    {reply, Res, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.

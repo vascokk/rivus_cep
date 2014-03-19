@@ -13,6 +13,7 @@ query_worker_test_() ->
 	     lager:start(),
 	     application:start(gproc),
 	     lager:set_loglevel(lager_console_backend, debug),
+	     application:set_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
 	     ok = application:start(rivus_cep)
      end,
      fun (_) ->
@@ -40,6 +41,7 @@ shared_streams_test_() ->
 	     lager:start(),
 	     application:start(gproc),
 	     lager:set_loglevel(lager_console_backend, debug),
+	     application:set_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
 	     ok = application:start(rivus_cep)
      end,
      fun (_) ->

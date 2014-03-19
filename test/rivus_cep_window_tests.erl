@@ -14,21 +14,24 @@ window_test_() ->
     {setup,
      fun () ->
 	     folsom:start(),
+	     lager:start(),
+	     application:start(gproc),
+	     lager:set_loglevel(lager_console_backend, debug),	     
 	     meck:new(folsom_utils),
+	     application:set_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+	     ok = application:start(rivus_cep),
 	     tick(0, 0)
      end,
      fun (_) ->
-	     folsom:stop(),
+	     application:stop(lager),
+	     application:stop(gproc),
+	     application:stop(rivus_cep),	     
 	     meck:unload(folsom_utils) end,
 
      [{"Create new window & insert event",
        fun new/0},
       {"Create sliding window, insert, remove after 2 second",
        fun new_sliding/0},
-      {"Select events where event.param = a",
-       fun select/0},
-      {"Select events where event.param = a and time of query > slide time",
-       fun select_outside/0},
       {"Test select from window using qlc",
        fun select_using_qlc/0},
       {"Select events where event1.param2 = event2.param2",
@@ -62,35 +65,6 @@ new_sliding() ->
     %%timer:sleep(4000),
     tick(0, 5),
     ?assertEqual([],rivus_cep_window:get_values(Window)).
-
-select_2() ->   
-    Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
-    tick(0,0),
-    rivus_cep_window:update(Window, <<"event1">>),
-    rivus_cep_window:update(Window, <<"event2">>),
-    rivus_cep_window:update(Window, <<"event3">>),
-    tick(0,1),
-    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:select(Window, "blah")).
-
-select() ->
-    Window = rivus_cep_window:new(2, slide),
-    tick(0,0),
-    rivus_cep_window:update(Window, {event1, a,b,c}),
-    rivus_cep_window:update(Window, {event1, aa,b,c}),
-    rivus_cep_window:update(Window, {event1, a,bbb,c}),
-    tick(0,1),
-    ?assertEqual([{event1, a,b,c}, {event1, a,bbb,c}], rivus_cep_window:select(Window, "blah")).
-    
-select_outside() ->
-    Window = rivus_cep_window:new(2),
-    tick(0,0),
-    rivus_cep_window:update(Window, {event1, a,b,c}),
-    rivus_cep_window:update(Window, {event1, aa,b,c}),
-    rivus_cep_window:update(Window, {event1, a,bbb,c}),
-    ?assertEqual([{event1, a,b,c}, {event1, a,bbb,c}], rivus_cep_window:select(Window, "blah")),
-    %%timer:sleep(4000),
-    tick(0, 5000),
-    ?assertEqual([],rivus_cep_window:select(Window, "blah")).
 
 
 select_using_qlc() ->
