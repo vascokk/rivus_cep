@@ -2,7 +2,7 @@
 
 #Rivus CEP
 
-Rivus CEP is an Erlang library for complex event processing, which uses a declarative SQL-like DSL to define operations over the event streams.
+Rivus CEP is an Erlang library for complex event processing, which uses a declarative SQL-like DSL to define operations over event streams.
 
 With Rivus you can do things like:
 
@@ -89,12 +89,9 @@ See some DSL examples in `test/rivus_cep_parser_tests.erl`.
 
 The project is in its infancy and there is a number of limitations/TODOs:
 
+- join-less queries should not keep the events in memory;
 - more aggregation functions are yet to be implemented;
 - using event aliases is mandatory;
-- only sliding windows are supported (no 'batch' windows);
-- no benchmarks at all;
-- extensive testing needed.
-
-###Contributions
-
-Contributions and suggestions are most appreciated!
+- only sliding windows are supported (no 'batch' or 'tumbling'  windows);
+- no benchmarks done;
+- needs extensive testing.

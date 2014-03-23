@@ -34,7 +34,7 @@
 -define(SERVER, ?MODULE).
 
 -include("rivus_cep.hrl").
--include_lib("../deps/folsom/include/folsom.hrl").
+-include_lib("folsom/include/folsom.hrl").
 
 -record(state, {query_sup,
 	        win_register = dict:new()}).

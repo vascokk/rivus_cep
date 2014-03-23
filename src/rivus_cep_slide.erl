@@ -28,7 +28,7 @@
 	 get_window/1]).
 
 -include("rivus_cep.hrl").
--include_lib("../deps/folsom/include/folsom.hrl").
+-include_lib("folsom/include/folsom.hrl").
 
 -define(WIDTH, 16).
 
