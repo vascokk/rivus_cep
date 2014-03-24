@@ -139,7 +139,7 @@ pattern() ->
     timer:sleep(2000),       
     
     {ok,Values} = gen_server:call(Pid, get_result),
-    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
-    ?assertEqual([{20,b,100,20}], Values),
+    ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    ?assertEqual([{10,b,100,20},{20,b,100,20}], Values),
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
