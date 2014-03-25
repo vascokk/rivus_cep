@@ -26,5 +26,33 @@
 -record(query_plan, {
 	  join_keys = orddict:new(),
 	  fsm
-	 }). 
+	 }).
+
+-record(query_state,{
+	  query_name,
+	  query_type,
+	  producers,
+	  subscribers,
+	  events = [] ,
+	  timeout = 60,
+	  query_ast,
+	  window,
+	  fsm_window,
+	  win_register,
+	  query_plan = #query_plan{}
+	 }).
+
+-record(query_ast,{
+	  select,
+	  from,
+	  where,
+	  within
+	 }).
+
+-record(fsm,{
+	  fsm_state,
+	  fsm_graph,
+	  fsm_events
+	 }).
+
 
