@@ -107,7 +107,7 @@ handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, #
     lager:debug("Query sup, Args: ~p~n",[QueryModArgs]),
     
     {ok, Pid} = supervisor:start_child(QuerySup, [QueryModArgs]),
-    {reply, {ok,Pid}, State#state{win_register=NewWinReg}};
+    {reply, {ok,Pid, QueryModArgs}, State#state{win_register=NewWinReg}};
 handle_call({notify, Producer, Event}, _From, #state{win_register = WinReg} = State) ->
     EventName = element(1, Event),
     gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),

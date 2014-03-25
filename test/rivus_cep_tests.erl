@@ -67,7 +67,7 @@ load_query_1() ->
                      where ev1.eventparam2 = ev2.eventparam2
                      within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_query_1], [Pid], []),
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_query_1], [Pid], []),
     
     Event1 = {event1, 10,b,c}, 
     Event2 = {event1, 15,bbb,c},
@@ -102,7 +102,7 @@ load_query_2() ->
                    where ev1.eventparam2 = ev2.eventparam2
                     within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_query_2], [Pid], []),
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_query_2], [Pid], []),
     
     %% send some events
     Event1 = {event1, gr1,b,10}, 
@@ -140,7 +140,7 @@ load_pattern() ->
                       where ev1.eventparam2 = ev2.eventparam2
                       within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_pattern_1], [Pid], []),
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_pattern_1], [Pid], []),
     
     Event1 = {event1, 10,b,10}, 
     Event2 = {event1, 15,bbb,20},
@@ -172,7 +172,7 @@ load_query_no_producers() ->
                      where ev1.eventparam2 = ev2.eventparam2
                      within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [any], [Pid], []),
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [any], [Pid], []),
     
     Event1 = {event1, 10,b,c}, 
     Event2 = {event1, 15,bbb,c},
@@ -207,7 +207,7 @@ shared_streams_1() ->
                      where ev1.eventparam2 = ev2.eventparam2
                      within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_sharedstreams_1], [Pid], [{shared_streams,true}]),
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_sharedstreams_1], [Pid], [{shared_streams,true}]),
     
     Event1 = {event1, 10,b,10}, 
     Event2 = {event1, 15,bbb,20},
@@ -242,7 +242,7 @@ shared_streams_2() ->
                    where ev1.eventparam2 = ev2.eventparam2
                     within 60 seconds; ",
     
-    {ok, QueryPid} = rivus_cep:load_query(QueryStr, [test_sharedstreams_2], [Pid], [{shared_streams,true}]),
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_sharedstreams_2], [Pid], [{shared_streams,true}]),
     
     %% send some events
     Event1 = {event1, gr1,b,10}, 
