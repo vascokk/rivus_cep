@@ -23,9 +23,8 @@
 -export([init/1, process_event/2, get_result/1]).
 
 
-
-init([QueryClauses, Producers, Subscribers, _Options, EventWindow, FsmWindow, GlobalWinReg]) ->
-    [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}] = QueryClauses,
+init([QD]) -> 
+    [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}] = QD#query_details.clauses,
     {QueryType, Events} = case FromClause of
                                    {pattern, {List}} -> {pattern, List};
                                    {List} -> {simple, List}
@@ -33,23 +32,23 @@ init([QueryClauses, Producers, Subscribers, _Options, EventWindow, FsmWindow, Gl
    
     Ast = #query_ast{select=SelectClause, from=FromClause, where=WhereClause, within=WithinClause},
 
-    case EventWindow of
-    	global -> [ gproc:reg({p, l, {Producer, Event, global }}) || Producer<-Producers, Event <- Events];
-    	_ -> [ gproc:reg({p, l, {Producer, Event }}) || Producer<-Producers, Event <- Events]
+    case QD#query_details.event_window of
+    	global -> [ gproc:reg({p, l, {Producer, Event, global }}) || Producer<-QD#query_details.producers, Event <- Events];
+    	_ -> [ gproc:reg({p, l, {Producer, Event }}) || Producer<-QD#query_details.producers, Event <- Events]
     end,
 
-    Plan = rivus_cep_query_planner:analyze(QueryClauses),
+    Plan = rivus_cep_query_planner:analyze(QD#query_details.clauses),
 
     lager:debug("~nStarting: ~p, PID: ~p, Query window: ~p, GlobalWinRegister: ~p ~n",
-		[QueryName, self(), EventWindow, GlobalWinReg]),
+		[QueryName, self(), QD#query_details.event_window, QD#query_details.window_register]),
 
     {ok, #query_state{query_name = QueryName,
 		query_type = QueryType,
-		window = EventWindow,
-		fsm_window = FsmWindow,
-		win_register =  GlobalWinReg,
-		producers = Producers,
-		subscribers = Subscribers,
+		window = QD#query_details.event_window,
+		fsm_window = QD#query_details.fsm_window,
+		win_register =  QD#query_details.window_register,
+		producers = QD#query_details.producers,
+		subscribers = QD#query_details.subscribers,
 		events = Events,
 		query_ast = Ast,		
 		query_plan = Plan}}.
@@ -93,7 +92,6 @@ get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, win
 		      end,
 	     lager:debug("---> Result: ~p <-----", [Result]),
 	     Result
-	    %% [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
     end;
 get_result(#query_state{events=Events, window = Window, query_ast = Ast} = _State) when Window /= global->
     {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
@@ -129,8 +127,7 @@ get_result(#query_state{events=Events, window = Window, query_ast = Ast} = _Stat
 			  false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
 		      end,
 	     lager:debug("---> Result: ~p <-----", [Result]),
-	     Result
-	     %%[gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+	     Result	     
     end.
 
 %% evaluate predicates on a given edge to allow transition to the state "EventName"
@@ -138,7 +135,7 @@ eval_fsm_predicates(Fsm, EventName, Event, State) ->
     G = Fsm#fsm.fsm_graph,   
     Predicates = rivus_cep_query_planner:get_predicates_on_edge(G, Fsm#fsm.fsm_state, EventName),
     case Predicates of
-	[] -> true; %% no predicates on edge => can do transition
+	[] -> true; %% no predicates on this edge => can do transition
 	_ -> SinglePredicate = rivus_cep_query_planner:to_single_predicate(Predicates),
 	    Events = rivus_cep_query_planner:get_events_on_path(G, EventName),
 	     eval_fsm_predicates(Fsm, Event, SinglePredicate, Events, State)    
@@ -160,8 +157,6 @@ eval_fsm_predicates(Fsm, Event, Predicates, Events, _State) ->
     CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], lists:filter(fun(L) -> L /=[] end, PreResultSet) ++ [[Event]]),
 
     lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
-
-    %SelectClause = Ast#query_ast.select,
     
     FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(Predicates, ResRecord) ],
     lager:debug("---> Filtered Result: ~p", [FilteredRes]),
@@ -212,7 +207,6 @@ eval_fsm_result(Fsm, EventName, #query_state{query_ast = Ast} = _State) ->
 		      end,
 	     lager:debug("---> Result: ~p <-----", [Result]),
 	     Result
-	     %%[gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
     end.
 
 create_match_spec(Event, Oldest) ->
@@ -308,9 +302,7 @@ eval_fsm(EventName, Event, State) ->
 		    false -> Acc				 
 		end
 	end, 
-    lists:flatten(lists:foldl(F, [], Fsms)). %% [Result]
-%%TODO: change the above foreach with foldl - return a list of FSM results
-%%	State.
+    lists:flatten(lists:foldl(F, [], Fsms)). 
 
 eval_fsm_state(EventName, FsmKey, Fsm, State) ->
     FsmWindow = State#query_state.fsm_window,

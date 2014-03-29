@@ -28,6 +28,17 @@
 	  fsm
 	 }).
 
+-record(query_details, {
+	  clauses,
+	  producers,
+	  subscribers,
+	  options,
+	  event_window,
+	  fsm_window,
+	  window_register
+	 }).
+%%[QueryClauses, Producers, Subscribers, _Options, EventWindow, FsmWindow, GlobalWinReg]
+
 -record(query_state,{
 	  query_name,
 	  query_type,

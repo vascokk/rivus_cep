@@ -27,15 +27,12 @@
 
 %%% API functions
 
-start_link({QueryClauses, Producers, Subscribers, Options, EventWindow, FsmWindow, GlobalWinReg}) ->
-    {QueryName} = hd(QueryClauses),
-    gen_server:start_link( {local, QueryName}, ?MODULE, [QueryClauses, Producers, Subscribers,
-							 Options, EventWindow, FsmWindow, GlobalWinReg], []).
+start_link(QueryDetails) ->
+    {QueryName} = hd(QueryDetails#query_details.clauses),
+    gen_server:start_link( {local, QueryName}, ?MODULE, [QueryDetails], []).
 
-init([QueryClauses, Producers, Subscribers, _Options, EventWindow, FsmWindow, GlobalWinReg]) ->
-
-    {ok, State} = rivus_cep_query:init([QueryClauses, Producers, Subscribers, _Options, EventWindow, FsmWindow, GlobalWinReg]),
-
+init([QueryDetails]) ->
+    {ok, State} = rivus_cep_query:init([QueryDetails]), 
     {ok, State}.
 
 

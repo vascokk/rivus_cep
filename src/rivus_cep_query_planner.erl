@@ -126,8 +126,7 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
 				{NewPredVars, Labels} = set_predicates_on_edge(Start, SV, PV, G),
 				digraph:add_edge(G, E, FV, SV, Labels),
 				NewPredVars;
-			   
-			        %%digraph:add_edge(G, FV, SV);
+			   			       
 			   (T, PV) when is_tuple(T) ->
 				L = tuple_to_list(T),
 				SV = digraph:add_vertex(G, hd(L)),
@@ -135,8 +134,7 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
 				E = digraph:add_edge(G, FV, SV, []),
 				{NewPredVars, Labels} = set_predicates_on_edge(Start, SV, PV, G),
 				digraph:add_edge(G, E, FV, SV, Labels),
-				
-				%%digraph:add_edge(G, FV, SV),
+								
 				{_, NewPredVars2} = pattern_to_graph(Start, NewPredVars, L, G),
 				NewPredVars2
 			end, PredVars, tuple_to_list(Second)),

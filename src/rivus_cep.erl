@@ -21,11 +21,11 @@
 %% API
 -export([start_link/1,
 	 load_query/4,
-	 load_query/3,
 	 notify/1,
 	 notify/2,
 	 notify_sync/1,
-	 notify_sync/2]).
+	 notify_sync/2,
+	 get_query_details/4]).
 
 %% gen_server API
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -48,9 +48,9 @@ start_link(Supervisor) ->
 load_query(QueryStr, Producers, Subscribers, Options) ->
     gen_server:call(?SERVER, {load_query, [QueryStr, Producers, Subscribers, Options]}).
 
-load_query(QueryStr, Partition, Options) ->
-    gen_server:call(?SERVER, {load_query, [QueryStr, [Partition], [], Options ++ [{use_riak, true}]]}).
-    
+get_query_details(QueryStr, Producers, Subscribers, Options) ->    
+    gen_server:call(?SERVER, {get_query_details, [QueryStr, Producers, Subscribers, Options]}).
+   
 notify(Event) ->
     notify(any, Event).
 
@@ -96,18 +96,15 @@ handle_cast(_Msg, State) ->
 
 
 handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{query_sup=QuerySup, win_register = WinReg} = State) ->
-    QueryClauses = parse_query(QueryStr),
-    Producers = case _Producers of
-	[] -> [any];
-	_ -> _Producers
-    end,
-    {EventWindow, FsmWindow, NewWinReg} = register_windows(QueryClauses,  Options, WinReg),
-    QueryModArgs = {QueryClauses, Producers, Subscribers, Options, EventWindow, FsmWindow, NewWinReg},
+
+    QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
+
+    lager:debug("Query sup, Args: ~p~n",[QueryDetails]),
     
-    lager:debug("Query sup, Args: ~p~n",[QueryModArgs]),
-    
-    {ok, Pid} = supervisor:start_child(QuerySup, [QueryModArgs]),
-    {reply, {ok,Pid, QueryModArgs}, State#state{win_register=NewWinReg}};
+    {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
+    {reply, {ok,Pid, QueryDetails}, State#state{win_register=QueryDetails#query_details.window_register}};
+handle_call({get_query_details, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{win_register = WinReg} = State) ->
+    QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg);
 handle_call({notify, Producer, Event}, _From, #state{win_register = WinReg} = State) ->
     EventName = element(1, Event),
     gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
@@ -137,6 +134,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
+get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg) ->
+    QueryClauses = parse_query(QueryStr),
+    Producers = case _Producers of
+		    [] -> [any];
+		    _ -> _Producers
+		end,
+    {EventWindow, FsmWindow, NewWinReg} = register_windows(QueryClauses,  Options, WinReg),
+    
+    QueryDetails = #query_details{
+		      clauses = QueryClauses,
+		      producers = Producers,
+		      subscribers = Subscribers,
+		      options = Options,
+		      event_window = EventWindow,
+		      fsm_window = FsmWindow,
+		      window_register = NewWinReg
+		     }.
+
 parse_query(QueryStr) ->    
     {ok, Tokens, _} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),

@@ -4,6 +4,7 @@
 -compile([{parse_transform, lager_transform}]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include("rivus_cep.hrl").
 
 query_worker_test_() ->
     {setup,
@@ -42,7 +43,14 @@ query_1() ->
     Window = rivus_cep_window:new(60),
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_1], [Pid], [], Window, nil, nil}),
+    {ok, QueryPid} = rivus_cep_query_worker:start_link(#query_details{
+							  clauses = QueryClauses,
+							  producers = [test_query_1],
+							  subscribers = [Pid],
+							  options = [],
+							  event_window = Window,
+							  fsm_window = nil,
+							  window_register = nil}),
     
     Event1 = {event1, 10,b,c}, 
     Event2 = {event1, 15,bbb,c},
@@ -80,7 +88,14 @@ query_2()->
 
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_query_2], [Pid], [], Window, nil, nil}),
+    {ok, QueryPid} = rivus_cep_query_worker:start_link(#query_details{
+							  clauses = QueryClauses,
+							  producers = [test_query_2],
+							  subscribers = [Pid],
+							  options = [],
+							  event_window = Window,
+							  fsm_window = nil,
+							  window_register = nil}),
     
     %% send some events
     Event1 = {event1, gr1,b,10}, 
@@ -122,7 +137,14 @@ pattern() ->
 
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
-    {ok, QueryPid} = rivus_cep_query_worker:start_link({QueryClauses, [test_pattern_1], [Pid], [], Window, FsmWindow, nil}),
+    {ok, QueryPid} = rivus_cep_query_worker:start_link(#query_details{
+							  clauses = QueryClauses,
+							  producers = [test_pattern_1],
+							  subscribers = [Pid],
+							  options = [],
+							  event_window = Window,
+							  fsm_window = FsmWindow,
+							  window_register = nil}),
 
     Event1 = {event1, 10,b,10}, 
     Event2 = {event1, 15,bbb,20},
