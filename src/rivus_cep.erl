@@ -104,7 +104,8 @@ handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, #
     {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
     {reply, {ok,Pid, QueryDetails}, State#state{win_register=QueryDetails#query_details.window_register}};
 handle_call({get_query_details, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{win_register = WinReg} = State) ->
-    QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg);
+    QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
+    {reply, {ok, QueryDetails}, State#state{win_register=QueryDetails#query_details.window_register}};
 handle_call({notify, Producer, Event}, _From, #state{win_register = WinReg} = State) ->
     EventName = element(1, Event),
     gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
@@ -142,15 +143,15 @@ get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg) ->
 		end,
     {EventWindow, FsmWindow, NewWinReg} = register_windows(QueryClauses,  Options, WinReg),
     
-    QueryDetails = #query_details{
-		      clauses = QueryClauses,
-		      producers = Producers,
-		      subscribers = Subscribers,
-		      options = Options,
-		      event_window = EventWindow,
-		      fsm_window = FsmWindow,
-		      window_register = NewWinReg
-		     }.
+    #query_details{
+       clauses = QueryClauses,
+       producers = Producers,
+       subscribers = Subscribers,
+       options = Options,
+       event_window = EventWindow,
+       fsm_window = FsmWindow,
+       window_register = NewWinReg
+      }.
 
 parse_query(QueryStr) ->    
     {ok, Tokens, _} = rivus_cep_scanner:string(QueryStr, 1),   
@@ -168,8 +169,6 @@ register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, {WithinCla
 	{simple, true} -> {global, nil, register_global_windows(Events, WithinClause, WinReg)};
 	_ -> {register_local_window(WithinClause), register_local_window(WithinClause), WinReg}
     end.
-
-
 
 register_local_window(WithinClause) ->
     rivus_cep_window:new(WithinClause).

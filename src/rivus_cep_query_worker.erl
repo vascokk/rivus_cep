@@ -32,7 +32,7 @@ start_link(QueryDetails) ->
     gen_server:start_link( {local, QueryName}, ?MODULE, [QueryDetails], []).
 
 init([QueryDetails]) ->
-    {ok, State} = rivus_cep_query:init([QueryDetails]), 
+    {ok, State} = rivus_cep_query:init(QueryDetails), 
     {ok, State}.
 
 

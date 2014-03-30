@@ -23,7 +23,7 @@
 -export([init/1, process_event/2, get_result/1]).
 
 
-init([QD]) -> 
+init(QD) -> 
     [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}] = QD#query_details.clauses,
     {QueryType, Events} = case FromClause of
                                    {pattern, {List}} -> {pattern, List};
