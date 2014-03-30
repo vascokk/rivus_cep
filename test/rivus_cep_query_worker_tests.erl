@@ -58,11 +58,11 @@ query_1() ->
     Event4 = {event2, 30,b,cc,d},
     Event5 = {event2, 40,bb,cc,dd},
    
-    gproc:send({p, l, {test_query_1, element(1, Event1)}}, {element(1, Event1), Event1}),
-    gproc:send({p, l, {test_query_1, element(1, Event2)}}, {element(1, Event2), Event2}),
-    gproc:send({p, l, {test_query_1, element(1, Event3)}}, {element(1, Event3), Event3}),
-    gproc:send({p, l, {test_query_1, element(1, Event4)}}, {element(1, Event4), Event4}),
-    gproc:send({p, l, {test_query_1, element(1, Event5)}}, {element(1, Event5), Event5}),
+    gproc:send({p, l, {test_query_1, element(1, Event1)}}, Event1),
+    gproc:send({p, l, {test_query_1, element(1, Event2)}}, Event2),
+    gproc:send({p, l, {test_query_1, element(1, Event3)}}, Event3),
+    gproc:send({p, l, {test_query_1, element(1, Event4)}}, Event4),
+    gproc:send({p, l, {test_query_1, element(1, Event5)}}, Event5),
 
     timer:sleep(2000),
     
@@ -105,12 +105,12 @@ query_2()->
     Event5 = {event2, gr2,bb,50,dd},
     Event6 = {event2, gr3,b,40,d},
 
-    gproc:send({p, l, {test_query_2, element(1, Event1)}}, {element(1, Event1), Event1}),
-    gproc:send({p, l, {test_query_2, element(1, Event2)}}, {element(1, Event2), Event2}),
-    gproc:send({p, l, {test_query_2, element(1, Event3)}}, {element(1, Event3), Event3}),
-    gproc:send({p, l, {test_query_2, element(1, Event4)}}, {element(1, Event4), Event4}),
-    gproc:send({p, l, {test_query_2, element(1, Event5)}}, {element(1, Event5), Event5}),
-    gproc:send({p, l, {test_query_2, element(1, Event6)}}, {element(1, Event6), Event6}),
+    gproc:send({p, l, {test_query_2, element(1, Event1)}}, Event1),
+    gproc:send({p, l, {test_query_2, element(1, Event2)}}, Event2),
+    gproc:send({p, l, {test_query_2, element(1, Event3)}}, Event3),
+    gproc:send({p, l, {test_query_2, element(1, Event4)}}, Event4),
+    gproc:send({p, l, {test_query_2, element(1, Event5)}}, Event5),
+    gproc:send({p, l, {test_query_2, element(1, Event6)}}, Event6),
 
     timer:sleep(2000),
     {ok,Values} = gen_server:call(Pid, get_result),
@@ -152,11 +152,11 @@ pattern() ->
     Event4 = {event2, 30,b,100,20},
     Event5 = {event2, 40,bb,200,30},
    
-    gproc:send({p, l, {test_pattern_1, element(1, Event1)}}, {element(1, Event1), Event1}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event2)}}, {element(1, Event2), Event2}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event3)}}, {element(1, Event3), Event3}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event4)}}, {element(1, Event4), Event4}),
-    gproc:send({p, l, {test_pattern_1, element(1, Event5)}}, {element(1, Event5), Event5}),
+    gproc:send({p, l, {test_pattern_1, element(1, Event1)}}, Event1),
+    gproc:send({p, l, {test_pattern_1, element(1, Event2)}}, Event2),
+    gproc:send({p, l, {test_pattern_1, element(1, Event3)}}, Event3),
+    gproc:send({p, l, {test_pattern_1, element(1, Event4)}}, Event4),
+    gproc:send({p, l, {test_pattern_1, element(1, Event5)}}, Event5),
 
     timer:sleep(2000),       
     

@@ -321,16 +321,17 @@ eval_fsm_state(EventName, FsmKey, Fsm, State) ->
 %%----------------------------------------------------------------------------------------------
 
 
-process_event({ _EventName , Event}, #query_state{query_type = QueryType, window = Window} = State) when QueryType == simple->
-    lager:debug("handle_info, query_type: simple,  Event: ~p",[Event]),
+process_event(Event, #query_state{query_type = QueryType, window = Window} = State) when QueryType == simple->
+    lager:debug("rivus_cep_query:process_event, query_type: simple,  Event: ~p",[Event]),
 
     case Window of
 	global -> ok;
 	_ -> rivus_cep_window:update(Window, Event)		
     end,
     get_result(State);
-process_event({ EventName , Event}, #query_state{query_type = QueryType} = State) when QueryType == pattern ->
-    lager:debug("handle_info, query_type: pattern, EventName: ~p,  Event: ~p",[EventName,Event]),
+process_event(Event, #query_state{query_type = QueryType} = State) when QueryType == pattern ->
+    EventName = element(1, Event),
+    lager:debug("rivus_cep_query:process_event, query_type: pattern, EventName: ~p,  Event: ~p",[EventName,Event]),
     case is_initial_state(EventName, State) of
 	false -> eval_fsm(EventName, Event, State);
 	true -> create_new_fsm(EventName, Event, State),

@@ -82,12 +82,12 @@ init([Supervisor]) ->
 %%--------------------------------------------------------------------
 handle_cast({notify, Producer, Event}, #state{win_register = WinReg} = State) ->
     EventName = element(1, Event),
-    gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
+    gproc:send({p, l, {Producer, EventName}}, Event),
     case dict:is_key(EventName, WinReg) of
 	true -> Window = dict:fetch(EventName, WinReg),
 		lager:debug("Updating global window: ~p~n",[Window]),
 		rivus_cep_window:update(Window, Event),
-		gproc:send({p, l, {Producer, EventName, global}}, {EventName, Event});
+		gproc:send({p, l, {Producer, EventName, global}}, Event);
 	false -> ok
     end,        
     {noreply, State};
@@ -108,11 +108,11 @@ handle_call({get_query_details, [QueryStr, _Producers, Subscribers, Options]}, _
     {reply, {ok, QueryDetails}, State#state{win_register=QueryDetails#query_details.window_register}};
 handle_call({notify, Producer, Event}, _From, #state{win_register = WinReg} = State) ->
     EventName = element(1, Event),
-    gproc:send({p, l, {Producer, EventName}}, {EventName, Event}),
+    gproc:send({p, l, {Producer, EventName}}, Event),
     case dict:is_key(EventName, WinReg) of
 	true -> Window = dict:fetch(EventName, WinReg),
 		rivus_cep_window:update(Window, Event),
-		gproc:send({p, l, {Producer, EventName, global}}, {eventName, Event});
+		gproc:send({p, l, {Producer, EventName, global}}, Event);
 	false -> ok
     end,    
     {reply, ok, State};
