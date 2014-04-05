@@ -53,16 +53,9 @@ init(QD) ->
 		query_ast = Ast,		
 		query_plan = Plan}}.
 
-create_qh_ss(Event, WinReg) ->
-    Window = dict:fetch(Event, WinReg),
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
-    MatchSpec = create_match_spec(Event, Oldest),
-    create_qh(MatchSpec, Reservoir).
-
 get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, window = Window} = _State) when Window == global ->    
-    QueryHandlers = lists:map(fun(Event) ->  create_qh_ss(Event, WinReg) end, Events),
-    
-    PreResultSet = [qlc:e(QH) || QH <- QueryHandlers ],    
+
+    PreResultSet = rivus_cep_window:get_pre_result(global, WinReg, Events),
  
     lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
 
@@ -94,11 +87,7 @@ get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, win
 	     Result
     end;
 get_result(#query_state{events=Events, window = Window, query_ast = Ast} = _State) when Window /= global->
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
-    MatchSpecs = [create_match_spec(Event, Oldest) || Event<- Events],
-    QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
-
-    PreResultSet = [qlc:e(QH) || QH <- QueryHandlers ],    
+    PreResultSet = rivus_cep_window:get_pre_result(local, Window, Events),
  
     lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
 
@@ -143,14 +132,8 @@ eval_fsm_predicates(Fsm, EventName, Event, State) ->
 
 eval_fsm_predicates(Fsm, Event, Predicates, Events, _State) ->
     Window = Fsm#fsm.fsm_events,
-    
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
-    
-    MatchSpecs = [create_match_spec(E, Oldest) || E<- Events ],
-    QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
-
-    PreResultSet = [qlc:e(QH) || QH <- QueryHandlers ],    
- 
+  
+    PreResultSet = rivus_cep_window:get_pre_result(local, Window, Events),
     
     lager:debug("---> Pre-Result Set: ~p", [PreResultSet++ [[Event]]]),
 
@@ -173,13 +156,7 @@ eval_fsm_result(Fsm, EventName, #query_state{query_ast = Ast} = _State) ->
     Events =  Events = rivus_cep_query_planner:get_events_on_path(G, EventName),            
     Window = Fsm#fsm.fsm_events,
     
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
-    
-    MatchSpecs = [create_match_spec(E, Oldest) || E<- Events],
-    QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
-
-    PreResultSet = [qlc:e(QH) || QH <- QueryHandlers ],    
- 
+    PreResultSet = rivus_cep_window:get_pre_result(local, Window, Events),
     
     lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
 
@@ -208,13 +185,6 @@ eval_fsm_result(Fsm, EventName, #query_state{query_ast = Ast} = _State) ->
 	     lager:debug("---> Result: ~p <-----", [Result]),
 	     Result
     end.
-
-create_match_spec(Event, Oldest) ->
-    ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==Event  -> Value end).
-    
-    
-create_qh(MatchSpec, Reservoir) ->
-     ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).
 
 where_eval({Op, Left, Right}, ResRecord) ->
     case Op of

@@ -16,23 +16,25 @@
 
 -module(rivus_cep_slide).
 
+-compile([{parse_transform, lager_transform}]).
+
 -export([new/1,
 	 resize/2,
 	 trim/1,
-	 trim/2,
 	 update/2,
 	 get_values/1,
 	 get_fsms/1,
 	 update_fsm/3,
 	 delete_fsm/2,
-	 get_window/1]).
+	 get_window/1,
+	 get_result/3]).
 
 -include("rivus_cep.hrl").
 -include_lib("folsom/include/folsom.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
+-include_lib("stdlib/include/qlc.hrl").
 
 -define(WIDTH, 16).
-
-
 
 new(Size) ->
     folsom_sample_slide:new(Size).
@@ -40,9 +42,9 @@ new(Size) ->
 resize(Window, NewSize) ->
     folsom_sample_slide:resize(Window, NewSize).
 
-get_window(Sample) ->
-    Size = Sample#slide.window,
-    Reservoir = Sample#slide.reservoir,    
+get_window(Window) ->
+    Size = Window#slide.window,
+    Reservoir = Window#slide.reservoir,    
     Oldest = rivus_cep_utils:timestamp() - Size,
     {Reservoir, Oldest}.
 
@@ -63,17 +65,31 @@ get_fsms(#slide{reservoir = Reservoir, window = Size}) ->
 delete_fsm(#slide{reservoir = Reservoir}, {Ts,Rnd}) ->    
     ets:select_delete(Reservoir, [{{{'$1','$2'},'$3'},[{'andalso',{'==', '$1', Ts}, {'==', '$2',Rnd}}],['true']}]).
 
-trim(#slide{reservoir = Reservoir, window = Size}) ->
-    Oldest = rivus_cep_utils:timestamp() - Size,
-    ets:select_delete(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]).
-
-trim(Reservoir, Size) when is_integer(Size) ->
-    Oldest = rivus_cep_utils:timestamp() - Size,
-    ets:select_delete(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]);
-trim(#slide{reservoir = Reservoir, window = Size}, Fun) when is_function(Fun) ->
-    Oldest = rivus_cep_utils:timestamp() - Size,
-    Match = ets:select(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]),
-    lists:foreach(fun(X) -> Fun(X) end, Match),
-    ets:select_delete(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]).
+get_result(local, Window, Events) ->
+    {Reservoir, Oldest} =  get_window(Window),
+    MatchSpecs = [create_match_spec(Event, Oldest) || Event<- Events],
+    QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
+    [qlc:e(QH) || QH <- QueryHandlers ];
+get_result(global, WinReg, Events) ->
+    QueryHandlers = lists:map(fun(Event) ->  create_qh_shared_window(Event, WinReg) end, Events),    
+    [qlc:e(QH) || QH <- QueryHandlers ].
 
 
+trim(Window) ->
+    Size = Window#slide.window,
+    Reservoir = Window#slide.reservoir,
+    Oldest = rivus_cep_utils:timestamp() - Size,
+    ets:select_delete(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]).   
+    
+
+create_qh_shared_window(Event, WinReg) ->
+    Window = dict:fetch(Event, WinReg),
+    {Reservoir, Oldest} = get_window(Window),
+    MatchSpec = create_match_spec(Event, Oldest),
+    create_qh(MatchSpec, Reservoir).
+
+create_match_spec(Event, Oldest) ->
+    ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==Event  -> Value end).
+    
+create_qh(MatchSpec, Reservoir) ->
+     ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).

@@ -33,7 +33,8 @@
 	 update_fsm/3,
 	 delete_fsm/2,
 	 get_fsms/1,
-	 start_link/0]).
+	 start_link/0,
+	 get_pre_result/3]).
 
 -record(state,{provider}).
 
@@ -58,26 +59,32 @@ new(Size) ->
 new(Size, slide) ->
     gen_server:call(?SERVER, {new, Size}).
 
-update(Sample, Value) ->
-    gen_server:call(?SERVER, {update, Sample, Value}).
+update(Window, Value) ->
+    gen_server:call(?SERVER, {update, Window, Value}).
 
-get_values(Sample) ->
-    gen_server:call(?SERVER, {get_value, Sample}).
+get_values(Window) ->
+    gen_server:call(?SERVER, {get_value, Window}).
 
-resize(Sample, NewSize) ->
-    gen_server:call(?SERVER, {resize, Sample, NewSize}).
+resize(Window, NewSize) ->
+    gen_server:call(?SERVER, {resize, Window, NewSize}).
 
-get_window(Sample) ->
-    gen_server:call(?SERVER, {get_window, Sample}).
+get_window(Window) ->
+    gen_server:call(?SERVER, {get_window, Window}).
 
-update_fsm(Sample, Key, Value) ->
-    gen_server:call(?SERVER, {update_fsm, Sample, Key, Value}).
+update_fsm(Window, Key, Value) ->
+    gen_server:call(?SERVER, {update_fsm, Window, Key, Value}).
 
-get_fsms(Sample) ->
-    gen_server:call(?SERVER, {get_fsm, Sample}).
+get_fsms(Window) ->
+    gen_server:call(?SERVER, {get_fsm, Window}).
 
-delete_fsm(Sample, Key) ->
-    gen_server:call(?SERVER, {delete_fsm, Sample, Key}).
+delete_fsm(Window, Key) ->
+    gen_server:call(?SERVER, {delete_fsm, Window, Key}).
+
+get_pre_result(local, Window, Events) ->
+    gen_server:call(?SERVER, {get_result, local, Window, Events});
+get_pre_result(global, WinReg, Events) ->
+    gen_server:call(?SERVER, {get_result, global, WinReg, Events}).
+    
 
 handle_cast(_Msg, State) -> 
     {noreply, State}.
@@ -89,29 +96,40 @@ handle_call({new, Size}, _From, #state{provider=Mod} = State) ->
 handle_call({new, slide, Size}, _From, #state{provider=Mod} = State) ->
     Res = Mod:new(Size),
     {reply, Res, State};
-handle_call({update, Sample, Value}, _From, #state{provider=Mod} = State) ->
-    lager:debug("~nUpdate window:~p, Value: ~p~n",[Sample, Value]),
-    Res = Mod:update(Sample, Value),
+handle_call({update, Window, Value}, _From, #state{provider=Mod} = State) ->
+    lager:debug("~nUpdate window:~p, Value: ~p~n",[Window, Value]),
+    Res = Mod:update(Window, Value),
     {reply, Res, State};
-handle_call({get_value, Sample}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_values(Sample),
+handle_call({get_value, Window}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:get_values(Window),
     {reply, Res, State};
-handle_call({resize, Sample, NewSize}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:resize(Sample, NewSize),
+handle_call({resize, Window, NewSize}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:resize(Window, NewSize),
     {reply, Res, State};
-handle_call({get_window, Sample}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_window(Sample),
+handle_call({get_window, Window}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:get_window(Window),
     {reply, Res, State};
-handle_call({update_fsm, Sample, Key, Value}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:update_fsm(Sample, Key, Value),
+handle_call({update_fsm, Window, Key, Value}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:update_fsm(Window, Key, Value),
     {reply, Res, State};
-handle_call({get_fsm, Sample}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_fsms(Sample),
+handle_call({get_fsm, Window}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:get_fsms(Window),
     {reply, Res, State};
-handle_call({delete_fsm, Sample, Key}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:delete_fsm(Sample, Key),
+handle_call({delete_fsm, Window, Key}, _From, #state{provider=Mod} = State) ->
+    Res = Mod:delete_fsm(Window, Key),
+    {reply, Res, State};
+handle_call({get_result, local, Window, Events}, _From, #state{provider=Mod} = State) ->
+    %% {Reservoir, Oldest} =  Mod:get_window(Window),
+    %% MatchSpecs = [create_match_spec(Event, Oldest) || Event<- Events],
+    %% QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
+    %% Res = [qlc:e(QH) || QH <- QueryHandlers ],
+    Res = Mod:get_result(local, Window, Events),
+    {reply, Res, State};
+handle_call({get_result, global, WinReg, Events}, _From, #state{provider=Mod} = State) ->
+    %% QueryHandlers = lists:map(fun(Event) ->  create_qh_shared_window(Event, WinReg, Mod) end, Events),    
+    %% Res = [qlc:e(QH) || QH <- QueryHandlers ],
+    Res = Mod:get_result(global, WinReg, Events),
     {reply, Res, State}.
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -120,3 +138,15 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%% create_qh_shared_window(Event, WinReg, Mod) ->
+%%     Window = dict:fetch(Event, WinReg),
+%%     {Reservoir, Oldest} = Mod:get_window(Window),
+%%     MatchSpec = create_match_spec(Event, Oldest),
+%%     create_qh(MatchSpec, Reservoir).
+
+%% create_match_spec(Event, Oldest) ->
+%%     ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==Event  -> Value end).
+    
+%% create_qh(MatchSpec, Reservoir) ->
+%%      ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).
