@@ -42,7 +42,7 @@
 	 get_pre_result/3,
 	 get_pre_result/4]).
 
--record(state,{provider, window, size}).
+-record(state,{provider, window, size, mod_details}).
 
 -define(SERVER, ?MODULE).
 
@@ -52,18 +52,23 @@
          terminate/2, code_change/3]).
 
 start_link(WinModule) ->
-    %%gen_server:start_link({local, ?SERVER}, ?MODULE, [WinModule], []).
     gen_server:start_link(?MODULE, [WinModule], []).
 
-%%start server for global windows
-start_link(global, WinModule) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [WinModule], []).
+start_link(WinModule, Args) when is_atom(Args) andalso Args == global-> %%start server for global windows
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [WinModule], []);
+start_link(WinModule, Args) when is_list(Args) ->
+    gen_server:start_link(?MODULE, [WinModule, Args], []).
+
 
 
 init([WinModule]) ->
-    lager:info("--- rivus_cep: Window server started"),
-    %%Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
-    {ok, #state{provider = WinModule}}.
+    lager:info("--- rivus_cep: Window server started. Provider:~p~n",[WinModule]),
+    {ok, MD} = WinModule:init([]),
+    {ok, #state{provider = WinModule, mod_details = MD}};
+init([WinModule, Args]) ->
+    lager:info("--- rivus_cep: Window server started. Provider:~p, Args:~p~n",[WinModule,Args]),
+    {ok, MD} = WinModule:init(Args),
+    {ok, #state{provider = WinModule, mod_details = MD}}.
 
 new(Size) ->
     gen_server:call(?SERVER, {new, Size}).
@@ -119,43 +124,43 @@ get_pre_result(global, WinReg, Events) ->
 handle_cast(_Msg, State) -> 
     {noreply, State}.
 
-handle_call({new, Size}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:new(Size),
+handle_call({new, Size}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:new(Size, MD),
     {reply, Res, State#state{window=Res, size=Size}};
-handle_call({new, slide, Size}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:new(Size),
-    {reply, Res, State#state{window=Res, size=Size}, timeout(Size)};
-handle_call({update, Window, Value}, _From, #state{provider=Mod} = State) ->
+handle_call({new, slide, Size}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:new(Size, MD),
+    {reply, Res, State#state{window=Res, size=Size, mod_details = MD}, timeout(Size)};
+handle_call({update, Window, Value}, _From, #state{provider=Mod, mod_details = MD} = State) ->
     lager:debug("~nUpdate window:~p, Value: ~p~n",[Window, Value]),
-    Res = Mod:update(Window, Value),
+    Res = Mod:update(Window, Value, MD),
     {reply, Res, State};
-handle_call({get_value, Window}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_values(Window),
+handle_call({get_value, Window}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:get_values(Window, MD),
     {reply, Res, State};
-handle_call({resize, Window, NewSize}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:resize(Window, NewSize),
+handle_call({resize, Window, NewSize}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:resize(Window, NewSize, MD),
     {reply, Res, State#state{window=Res, size=NewSize},timeout(NewSize)};
-handle_call({get_window, Window}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_window(Window),
+handle_call({get_window, Window}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:get_window(Window, MD),
     {reply, Res, State};
-handle_call({update_fsm, Window, Key, Value}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:update_fsm(Window, Key, Value),
+handle_call({update_fsm, Window, Key, Value}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:update_fsm(Window, Key, Value, MD),
     {reply, Res, State};
-handle_call({get_fsm, Window}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_fsms(Window),
+handle_call({get_fsm, Window}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:get_fsms(Window, MD),
     {reply, Res, State};
-handle_call({delete_fsm, Window, Key}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:delete_fsm(Window, Key),
+handle_call({delete_fsm, Window, Key}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:delete_fsm(Window, Key, MD),
     {reply, Res, State};
-handle_call({get_result, local, Window, Events}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_result(local, Window, Events),
+handle_call({get_result, local, Window, Events}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:get_result(local, Window, Events, MD),
     {reply, Res, State};
-handle_call({get_result, global, WinReg, Events}, _From, #state{provider=Mod} = State) ->
-    Res = Mod:get_result(global, WinReg, Events),
+handle_call({get_result, global, WinReg, Events}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:get_result(global, WinReg, Events, MD),
     {reply, Res, State}.
 
-handle_info(timeout, State=#state{window = Window, provider=Mod, size=Size}) ->
-    Mod:trim(Window),
+handle_info(timeout, State=#state{window = Window, provider=Mod, mod_details = MD, size=Size}) ->
+    Mod:trim(Window, MD),
     {noreply, State, timeout(Size)};
 handle_info(_Info, State) ->
     {noreply, State}.

@@ -31,7 +31,7 @@ start(_StartType, _StartArgs) ->
     case rivus_cep_sup:start_link() of
 	{ok, Pid} ->
 	    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
-	    {ok, _} = rivus_cep_window:start_link(global, Mod),
+	    {ok, _} = rivus_cep_window:start_link(Mod, global),
 	    {ok, Pid};
 	Error ->
 	    Error

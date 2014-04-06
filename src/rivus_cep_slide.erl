@@ -18,16 +18,17 @@
 
 -compile([{parse_transform, lager_transform}]).
 
--export([new/1,
-	 resize/2,
+-export([new/2,
+	 resize/3,
 	 trim/1,
-	 update/2,
-	 get_values/1,
-	 get_fsms/1,
-	 update_fsm/3,
-	 delete_fsm/2,
-	 get_window/1,
-	 get_result/3]).
+	 update/3,
+	 get_values/2,
+	 get_fsms/2,
+	 update_fsm/4,
+	 delete_fsm/3,
+	 get_window/2,
+	 get_result/4,
+	 init/1]).
 
 -include("rivus_cep.hrl").
 -include_lib("folsom/include/folsom.hrl").
@@ -36,41 +37,44 @@
 
 -define(WIDTH, 16).
 
-new(Size) ->
+init([]) ->
+    {ok, []}.
+
+new(Size, _MD) ->
     folsom_sample_slide:new(Size).
 
-resize(Window, NewSize) ->
+resize(Window, NewSize, _MD) ->
     folsom_sample_slide:resize(Window, NewSize).
 
-get_window(Window) ->
+get_window(Window, _MD) ->
     Size = Window#slide.window,
     Reservoir = Window#slide.reservoir,    
     Oldest = rivus_cep_utils:timestamp() - Size,
     {Reservoir, Oldest}.
 
-update(Window, Value) ->
+update(Window, Value, _MD) ->
     folsom_sample_slide:update(Window, Value).
 
-update_fsm(#slide{reservoir = Reservoir} = Window, Key, Value) ->
+update_fsm(#slide{reservoir = Reservoir} = Window, Key, Value, _MD) ->
     ets:update_element(Reservoir, Key, {1, Value}),
     Window.
 
-get_values(Window) ->
+get_values(Window, _MD) ->
     folsom_sample_slide:get_values(Window).
 
-get_fsms(#slide{reservoir = Reservoir, window = Size}) ->
+get_fsms(#slide{reservoir = Reservoir, window = Size}, _MD) ->
     Oldest = rivus_cep_utils:timestamp() - Size,
     ets:select(Reservoir, [{{{'$1','$2'},'$3'},[{'>=', '$1', Oldest}],['$_']}]).
 
-delete_fsm(#slide{reservoir = Reservoir}, {Ts,Rnd}) ->    
+delete_fsm(#slide{reservoir = Reservoir}, {Ts,Rnd}, _MD) ->    
     ets:select_delete(Reservoir, [{{{'$1','$2'},'$3'},[{'andalso',{'==', '$1', Ts}, {'==', '$2',Rnd}}],['true']}]).
 
-get_result(local, Window, Events) ->
-    {Reservoir, Oldest} =  get_window(Window),
+get_result(local, Window, Events, _MD) ->
+    {Reservoir, Oldest} =  get_window(Window, []),
     MatchSpecs = [create_match_spec(Event, Oldest) || Event<- Events],
     QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
     [qlc:e(QH) || QH <- QueryHandlers ];
-get_result(global, WinReg, Events) ->
+get_result(global, WinReg, Events, _MD) ->
     QueryHandlers = lists:map(fun(Event) ->  create_qh_shared_window(Event, WinReg) end, Events),    
     [qlc:e(QH) || QH <- QueryHandlers ].
 
@@ -82,7 +86,7 @@ trim(Window) ->
     
 create_qh_shared_window(Event, WinReg) ->
     Window = dict:fetch(Event, WinReg),
-    {Reservoir, Oldest} = get_window(Window),
+    {Reservoir, Oldest} = get_window(Window, []),
     MatchSpec = create_match_spec(Event, Oldest),
     create_qh(MatchSpec, Reservoir).
 
