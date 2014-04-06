@@ -35,7 +35,9 @@
 	  options,
 	  event_window,
 	  fsm_window,
-	  window_register
+	  window_register,
+	  event_window_pid,
+	  fsm_window_pid
 	 }).
 %%[QueryClauses, Producers, Subscribers, _Options, EventWindow, FsmWindow, GlobalWinReg]
 
@@ -48,8 +50,10 @@
 	  timeout = 60,
 	  query_ast,
 	  window,
-	  fsm_window,
+	  fsm_window, 
 	  win_register,
+	  event_win_pid,
+	  fsm_win_pid,
 	  query_plan = #query_plan{}
 	 }).
 

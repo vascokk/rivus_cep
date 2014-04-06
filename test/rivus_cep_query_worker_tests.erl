@@ -33,22 +33,26 @@ query_worker_test_() ->
     }.
 
 query_1() ->
-    {ok,Pid} = result_subscriber:start_link(),
+    {ok,SubPid} = result_subscriber:start_link(),
 
     QueryStr = "define correlation1 as
                      select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
                      from event1 as ev1, event2 as ev2
                      where ev1.eventparam2 = ev2.eventparam2
                      within 60 seconds; ",
-    Window = rivus_cep_window:new(60),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),        
+    
+    Window = rivus_cep_window:new(Pid, slide, 60),
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
     {ok, QueryPid} = rivus_cep_query_worker:start_link(#query_details{
 							  clauses = QueryClauses,
 							  producers = [test_query_1],
-							  subscribers = [Pid],
+							  subscribers = [SubPid],
 							  options = [],
 							  event_window = Window,
+							  event_window_pid = Pid,
 							  fsm_window = nil,
 							  window_register = nil}),
     
@@ -66,7 +70,7 @@ query_1() ->
 
     timer:sleep(2000),
     
-    {ok,Values} = gen_server:call(Pid, get_result),
+    {ok,Values} = gen_server:call(SubPid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     ?assertEqual(2, length(Values)),
@@ -74,26 +78,31 @@ query_1() ->
     ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
     
     gen_server:call(QueryPid,stop),
-    gen_server:call(Pid,stop).
+    gen_server:call(SubPid,stop).
 
 query_2()->
-    {ok, Pid} = result_subscriber:start_link(),
+    {ok, SubPid} = result_subscriber:start_link(),
     
     QueryStr = "define correlation2 as
                   select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
                   from event1 as ev1, event2 as ev2
                    where ev1.eventparam2 = ev2.eventparam2
                     within 60 seconds; ",
-    Window = rivus_cep_window:new(60),
+
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),        
+    
+    Window = rivus_cep_window:new(Pid, slide, 60),
 
     {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
     {ok, QueryPid} = rivus_cep_query_worker:start_link(#query_details{
 							  clauses = QueryClauses,
 							  producers = [test_query_2],
-							  subscribers = [Pid],
+							  subscribers = [SubPid],
 							  options = [],
 							  event_window = Window,
+							  event_window_pid = Pid,
 							  fsm_window = nil,
 							  window_register = nil}),
     
@@ -113,7 +122,7 @@ query_2()->
     gproc:send({p, l, {test_query_2, element(1, Event6)}}, Event6),
 
     timer:sleep(2000),
-    {ok,Values} = gen_server:call(Pid, get_result),
+    {ok,Values} = gen_server:call(SubPid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
     ?assertEqual(2, length(Values)),
@@ -121,29 +130,35 @@ query_2()->
     ?assert(lists:any(fun(T) -> T == {gr3,b,80} end, Values)),
     
     gen_server:call(QueryPid,stop),
-    gen_server:call(Pid,stop).
+    gen_server:call(SubPid,stop).
 
 
 pattern() ->
-    {ok, Pid} = result_subscriber:start_link(),
+    {ok, SubPid} = result_subscriber:start_link(),
     
     QueryStr = "define pattern1 as
                       select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev2.eventparam4
                       from event1 as ev1 -> event2 as ev2
                       where ev1.eventparam2 = ev2.eventparam2
                       within 60 seconds; ",
-    Window = rivus_cep_window:new(60),
-    FsmWindow = rivus_cep_window:new(60),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid1} = rivus_cep_window:start_link(Mod),        
+    {ok, Pid2} = rivus_cep_window:start_link(Mod),        
+    
+    Window = rivus_cep_window:new(Pid1, slide, 60),
+    FsmWindow = rivus_cep_window:new(Pid2, 60),
 
-    {ok, Tokens, Endline} = rivus_cep_scanner:string(QueryStr, 1),   
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string(QueryStr, 1),   
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),    
     {ok, QueryPid} = rivus_cep_query_worker:start_link(#query_details{
 							  clauses = QueryClauses,
 							  producers = [test_pattern_1],
-							  subscribers = [Pid],
+							  subscribers = [SubPid],
 							  options = [],
 							  event_window = Window,
+							  event_window_pid = Pid1,
 							  fsm_window = FsmWindow,
+							  fsm_window_pid = Pid2,
 							  window_register = nil}),
 
     Event1 = {event1, 10,b,10}, 
@@ -160,8 +175,8 @@ pattern() ->
 
     timer:sleep(2000),       
     
-    {ok,Values} = gen_server:call(Pid, get_result),
+    {ok,Values} = gen_server:call(SubPid, get_result),
     ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     ?assertEqual([{10,b,100,20},{20,b,100,20}], Values),
     gen_server:call(QueryPid,stop),
-    gen_server:call(Pid,stop).
+    gen_server:call(SubPid,stop).

@@ -47,34 +47,40 @@ window_test_() ->
     }.
 
 new() ->
-    Window = rivus_cep_window:new(2),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),        
+    Window = rivus_cep_window:new(Pid, slide, 2),
     tick(0,0),
-    rivus_cep_window:update(Window, <<"event1">>),
-    rivus_cep_window:update(Window, <<"event2">>),
-    rivus_cep_window:update(Window, <<"event3">>),
+    rivus_cep_window:update(Pid, Window, <<"event1">>),
+    rivus_cep_window:update(Pid, Window, <<"event2">>),
+    rivus_cep_window:update(Pid, Window, <<"event3">>),
     tick(0,1),
-    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Window)).
+    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Pid, Window)).
 
 new_sliding() ->   
-    Window = rivus_cep_window:new(2, slide), %% 2 seconds sliding-window
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),        
+    Window = rivus_cep_window:new(Pid, slide, 2), %% 2 seconds sliding-window
     tick(0,0),
-    rivus_cep_window:update(Window, <<"event1">>),
-    rivus_cep_window:update(Window, <<"event2">>),
-    rivus_cep_window:update(Window, <<"event3">>),
-    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Window)),
+    rivus_cep_window:update(Pid, Window, <<"event1">>),
+    rivus_cep_window:update(Pid, Window, <<"event2">>),
+    rivus_cep_window:update(Pid, Window, <<"event3">>),
+    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Pid, Window)),
     %%timer:sleep(4000),
     tick(0, 5),
-    ?assertEqual([],rivus_cep_window:get_values(Window)).
+    ?assertEqual([],rivus_cep_window:get_values(Pid, Window)).
 
 
 select_using_qlc() ->
-    Window = rivus_cep_window:new(60, slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),            
+    Window = rivus_cep_window:new(Pid, slide, 60),
     tick(0,0),
-    rivus_cep_window:update(Window, {event1, a,b,c}),
-    rivus_cep_window:update(Window, {event1, aa,b,c}),
-    rivus_cep_window:update(Window, {event1, a,bbb,c}),
-    rivus_cep_window:update(Window, {event2, a,bb,cc,d}),
-    rivus_cep_window:update(Window, {event2, a,bb,cc,dd}),
+    rivus_cep_window:update(Pid, Window, {event1, a,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, aa,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, a,bbb,c}),
+    rivus_cep_window:update(Pid, Window, {event2, a,bb,cc,d}),
+    rivus_cep_window:update(Pid, Window, {event2, a,bb,cc,dd}),
 
     Size = Window#slide.window,
     Reservoir = Window#slide.reservoir,    
@@ -92,14 +98,16 @@ select_using_qlc() ->
     ?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
 
 select_where_op_equal() ->
-    Window = rivus_cep_window:new(60, slide),
-    rivus_cep_window:update(Window, {event1, a,b,c}),
-    rivus_cep_window:update(Window, {event1, aa,b,c}),
-    rivus_cep_window:update(Window, {event1, a,bbb,c}),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),            
+    Window = rivus_cep_window:new(Pid, slide, 60),
+    rivus_cep_window:update(Pid, Window, {event1, a,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, aa,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, a,bbb,c}),
     rivus_cep_window:update(Window, {event2, a,bb,cc,d}),
     rivus_cep_window:update(Window, {event2, a,bb,cc,dd}),
     
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
+    {Reservoir, Oldest} = rivus_cep_window:get_window(Pid, Window),
     
     Ms1 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event1 -> Value end),
     Ms2 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event2 -> Value end),
@@ -113,14 +121,16 @@ select_where_op_equal() ->
     ?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
 
 select_count() ->
-    Window = rivus_cep_window:new(60, slide),
-    rivus_cep_window:update(Window, {event1, a,b,c}),
-    rivus_cep_window:update(Window, {event1, aa,b,c}),
-    rivus_cep_window:update(Window, {event1, a,bbb,c}),
-    rivus_cep_window:update(Window, {event2, a,bb,cc,d}),
-    rivus_cep_window:update(Window, {event2, a,bb,cc,dd}),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),            
+    Window = rivus_cep_window:new(Pid, slide, 60),
+    rivus_cep_window:update(Pid, Window, {event1, a,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, aa,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, a,bbb,c}),
+    rivus_cep_window:update(Pid, Window, {event2, a,bb,cc,d}),
+    rivus_cep_window:update(Pid, Window, {event2, a,bb,cc,dd}),
     
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
+    {Reservoir, Oldest} = rivus_cep_window:get_window(Pid, Window),
     
     Ms1 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest, (element(1,Value)==event1 orelse  element(1,Value)==event2) -> Value end),
     QH1 = ets:table(Reservoir, [{traverse, {select, Ms1}}]),
@@ -130,15 +140,17 @@ select_count() ->
     ?assertEqual(5, Count ).
 
 select_count_where_op_equal() ->
-    Window = rivus_cep_window:new(60, slide),
-    rivus_cep_window:update(Window, {event1, a,b,c}),
-    rivus_cep_window:update(Window, {event1, aa,b,c}),
-    rivus_cep_window:update(Window, {event1, a,bbb,c}),
-    rivus_cep_window:update(Window, {event2, a,bb,cc,d}),
-    rivus_cep_window:update(Window, {event2, a,bb,cc,dd}),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),            
+    Window = rivus_cep_window:new(Pid, slide, 60),
+    rivus_cep_window:update(Pid, Window, {event1, a,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, aa,b,c}),
+    rivus_cep_window:update(Pid, Window, {event1, a,bbb,c}),
+    rivus_cep_window:update(Pid, Window, {event2, a,bb,cc,d}),
+    rivus_cep_window:update(Pid, Window, {event2, a,bb,cc,dd}),
 
     %% WITHIN clause
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
+    {Reservoir, Oldest} = rivus_cep_window:get_window(Pid, Window),
     Ms1 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event1  -> Value end),
     Ms2 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event2  -> Value end),
 
@@ -157,15 +169,17 @@ select_count_where_op_equal() ->
     
 
 select_sum_where_op_equal() ->
-    Window = rivus_cep_window:new(60, slide),
-    rivus_cep_window:update(Window, {event1, 10,b,c}), % *
-    rivus_cep_window:update(Window, {event1, 15,bbb,c}),
-    rivus_cep_window:update(Window, {event1, 20,b,c}), % *
-    rivus_cep_window:update(Window, {event2, 30,b,cc,d}),
-    rivus_cep_window:update(Window, {event2, 40,bb,cc,dd}),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),            
+    Window = rivus_cep_window:new(Pid, slide, 60),
+    rivus_cep_window:update(Pid, Window, {event1, 10,b,c}), % *
+    rivus_cep_window:update(Pid, Window, {event1, 15,bbb,c}),
+    rivus_cep_window:update(Pid, Window, {event1, 20,b,c}), % *
+    rivus_cep_window:update(Pid, Window, {event2, 30,b,cc,d}),
+    rivus_cep_window:update(Pid, Window, {event2, 40,bb,cc,dd}),
 
     %% WITHIN clause
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),
+    {Reservoir, Oldest} = rivus_cep_window:get_window(Pid, Window),
     Ms1 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event1  -> Value end),
     Ms2 = ets:fun2ms(fun({{Time,'_'},Value}) when Time >= Oldest andalso element(1,Value)==event2  -> Value end),
 
@@ -190,15 +204,17 @@ create_from_qh(MatchSpec, Reservoir) ->
      ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).
 
 dynamic_qh() ->
-    Window = rivus_cep_window:new(60, slide),
-    rivus_cep_window:update(Window, {event1, 10,b,c}), % *
-    rivus_cep_window:update(Window, {event1, 15,bbb,c}),
-    rivus_cep_window:update(Window, {event1, 20,b,c}), % *
-    rivus_cep_window:update(Window, {event2, 30,b,cc,d}),
-    rivus_cep_window:update(Window, {event2, 40,bb,cc,dd}),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    {ok, Pid} = rivus_cep_window:start_link(Mod),       
+    Window = rivus_cep_window:new(Pid, slide, 60),
+    rivus_cep_window:update(Pid, Window, {event1, 10,b,c}), % *
+    rivus_cep_window:update(Pid, Window, {event1, 15,bbb,c}),
+    rivus_cep_window:update(Pid, Window, {event1, 20,b,c}), % *
+    rivus_cep_window:update(Pid, Window, {event2, 30,b,cc,d}),
+    rivus_cep_window:update(Pid, Window, {event2, 40,bb,cc,dd}),
 
     %% WITHIN clause
-    {Reservoir, Oldest} = rivus_cep_window:get_window(Window),    
+    {Reservoir, Oldest} = rivus_cep_window:get_window(Pid, Window),    
     
     MatchSpecs =
         [ 

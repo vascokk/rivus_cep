@@ -74,14 +74,12 @@ get_result(global, WinReg, Events) ->
     QueryHandlers = lists:map(fun(Event) ->  create_qh_shared_window(Event, WinReg) end, Events),    
     [qlc:e(QH) || QH <- QueryHandlers ].
 
-
 trim(Window) ->
     Size = Window#slide.window,
     Reservoir = Window#slide.reservoir,
     Oldest = rivus_cep_utils:timestamp() - Size,
     ets:select_delete(Reservoir, [{{{'$1','_'},'_'},[{'<', '$1', Oldest}],['true']}]).   
     
-
 create_qh_shared_window(Event, WinReg) ->
     Window = dict:fetch(Event, WinReg),
     {Reservoir, Oldest} = get_window(Window),

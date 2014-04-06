@@ -95,8 +95,11 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
-handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{query_sup=QuerySup, win_register = WinReg} = State) ->
+handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, State) ->
 
+    WinReg = State#state.win_register,
+    QuerySup = State#state.query_sup,
+        
     QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
 
     lager:debug("Query sup, Args: ~p~n",[QueryDetails]),
@@ -104,6 +107,9 @@ handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, #
     {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
     {reply, {ok,Pid, QueryDetails}, State#state{win_register=QueryDetails#query_details.window_register}};
 handle_call({get_query_details, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{win_register = WinReg} = State) ->
+    %% Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
+    %% {ok, WinPid} = rivus_cep_window:start_link(Mod), 
+    
     QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
     {reply, {ok, QueryDetails}, State#state{win_register=QueryDetails#query_details.window_register}};
 handle_call({notify, Producer, Event}, _From, #state{win_register = WinReg} = State) ->
@@ -137,11 +143,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg) ->
     QueryClauses = parse_query(QueryStr),
+    
     Producers = case _Producers of
 		    [] -> [any];
 		    _ -> _Producers
 		end,
-    {EventWindow, FsmWindow, NewWinReg} = register_windows(QueryClauses,  Options, WinReg),
+        
+    {{EventWindow,EvWinPid}, {FsmWindow,FsmWinPid}, NewWinReg} = register_windows(QueryClauses,  Options, WinReg),
     
     #query_details{
        clauses = QueryClauses,
@@ -150,7 +158,9 @@ get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg) ->
        options = Options,
        event_window = EventWindow,
        fsm_window = FsmWindow,
-       window_register = NewWinReg
+       window_register = NewWinReg,
+       event_window_pid = EvWinPid,
+       fsm_window_pid = FsmWinPid
       }.
 
 parse_query(QueryStr) ->    
@@ -159,19 +169,27 @@ parse_query(QueryStr) ->
     QueryClauses.
 
 register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, {WithinClause}], Options, WinReg) ->
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
+    %%{ok, EvWinPid} = rivus_cep_window:start_link(Mod),
+    
     {QueryType, Events} = case FromClause of
 			      {pattern, {List}} -> {pattern, List};
 			      {List} -> {simple, List}
 			  end,    
     SharedStreams = proplists:get_value(shared_streams, Options, false),
     case {QueryType, SharedStreams} of
-	{pattern, _} -> {register_local_window(WithinClause), register_local_window(WithinClause), WinReg};
-	{simple, true} -> {global, nil, register_global_windows(Events, WithinClause, WinReg)};
-	_ -> {register_local_window(WithinClause), register_local_window(WithinClause), WinReg}
+	{pattern, _} -> {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
+			{ok, FsmWinPid} = rivus_cep_window:start_link(Mod),			
+			{ {register_local_window(WithinClause, EvWinPid), EvWinPid},
+			  {register_local_window(WithinClause, FsmWinPid), FsmWinPid},
+			  WinReg };
+	{simple, true} -> {{global,nil}, {nil,nil}, register_global_windows(Events, WithinClause, WinReg)};
+	_ -> {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
+	     {{register_local_window(WithinClause, EvWinPid), EvWinPid}, {nil,nil}, WinReg}
     end.
 
-register_local_window(WithinClause) ->
-    rivus_cep_window:new(WithinClause).
+register_local_window(WithinClause, Pid) ->
+    rivus_cep_window:new(Pid, slide, WithinClause).
 
 register_global_windows(Events, WithinClause, WinReg) ->
     NewWinReg = lists:foldl(fun(Event, Register) -> case dict:is_key(Event, Register) of
@@ -193,5 +211,7 @@ maybe_update_window_size(Event, WinReg, WithinClause) ->
 	     
     
 create_new_global_window(Event, WinReg, WithinClause) ->
-    Window = rivus_cep_window:new(WithinClause),
+    %% Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
+    %% {ok, EvWinPid} = rivus_cep_window:start_link(Mod),    
+    Window = rivus_cep_window:new(slide, WithinClause),
     dict:store(Event, Window, WinReg).
