@@ -28,7 +28,7 @@
 	 delete_fsm/3,
 	 get_window/2,
 	 get_result/4,
-	 init/1]).
+	 initialize/1]).
 
 -include("rivus_cep.hrl").
 -include_lib("folsom/include/folsom.hrl").
@@ -37,7 +37,7 @@
 
 -define(WIDTH, 16).
 
-init([]) ->
+initialize([]) ->
     {ok, []}.
 
 new(Size, _MD) ->

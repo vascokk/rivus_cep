@@ -63,11 +63,11 @@ start_link(WinModule, Args) when is_list(Args) ->
 
 init([WinModule]) ->
     lager:info("--- rivus_cep: Window server started. Provider:~p~n",[WinModule]),
-    {ok, MD} = WinModule:init([]),
+    {ok, MD} = WinModule:initialize([]),
     {ok, #state{provider = WinModule, mod_details = MD}};
 init([WinModule, Args]) ->
     lager:info("--- rivus_cep: Window server started. Provider:~p, Args:~p~n",[WinModule,Args]),
-    {ok, MD} = WinModule:init(Args),
+    {ok, MD} = WinModule:initialize(Args),
     {ok, #state{provider = WinModule, mod_details = MD}}.
 
 new(Size) ->
