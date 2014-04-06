@@ -22,7 +22,6 @@
 -include_lib("stdlib/include/ms_transform.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -include("rivus_cep.hrl").
-%%-include_lib("folsom/include/folsom.hrl").
 
 -export([new/1,
 	 new/2,
