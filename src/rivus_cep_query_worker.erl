@@ -52,17 +52,23 @@ handle_cast(_Msg, State) ->
 handle_info(Event, #query_state{query_type = QueryType} = State) when QueryType == simple->
     lager:debug("handle_info, query_type: simple,  Event: ~p",[Event]),
 
-    Result = rivus_cep_query:process_event(Event, State),
-    case Result of
-    	nil -> nil;
-    	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+    case apply_filters(Event, State#query_state.stream_filters) of
+	true-> Result = rivus_cep_query:process_event(Event, State),
+	       case Result of
+		   nil -> nil;
+		   _ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+	       end;
+	false -> ok
     end,
     {noreply, State};
 handle_info(Event, #query_state{query_type = QueryType} = State) when QueryType == pattern ->
-    Result = rivus_cep_query:process_event(Event, State),
-    case Result of
-    	[] -> [];
-    	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+    case apply_filters(Event, State#query_state.stream_filters) of
+	true -> Result = rivus_cep_query:process_event(Event, State),
+		case Result of
+		    [] -> [];
+		    _ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+		end;
+	false -> ok
     end,
     {noreply, State}; 
 handle_info(Info, State) ->
@@ -75,3 +81,44 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, _State, _Extra) ->
     {ok, _State}.
+
+
+%%----------------------------------------------------------------------------------------------
+%% gen_server functions
+%%----------------------------------------------------------------------------------------------
+ apply_filters(Event, FiltersDict) ->
+    EventName = element(1, Event),
+    Filters = case orddict:is_key(EventName, FiltersDict) of
+		  true -> orddict:fetch(EventName, FiltersDict);
+		  false -> []
+	      end,
+    lists:foldl(fun(Filter, Acc) ->
+			case eval_filter(Event, Filter) of
+			    true -> Acc;
+			    false -> false
+			end
+		end,
+		true, Filters).
+
+eval_filter(Event, {eq, Left, Right}) ->
+    eval_filter(Event, Left) == eval_filter(Event,Right);
+eval_filter(Event, {lt, Left, Right}) ->
+    eval_filter(Event, Left) < eval_filter(Event,Right);
+eval_filter(Event, {gt, Left, Right}) ->
+    eval_filter(Event, Left) > eval_filter(Event,Right);
+eval_filter(Event, {lte, Left, Right}) ->
+    eval_filter(Event, Left) =< eval_filter(Event,Right);
+eval_filter(Event, {gte, Left, Right}) ->
+    eval_filter(Event, Left) >= eval_filter(Event,Right);
+eval_filter(Event, {ne, Left, Right}) ->
+    eval_filter(Event, Left) /= eval_filter(Event,Right);
+eval_filter(_Event, {integer, Value}) ->
+    Value;
+eval_filter(_Event, {float, Value}) ->
+    Value;
+eval_filter(_Event, {string, Value}) ->
+    Value;
+eval_filter(Event, {EventName, ParamName}) ->
+    EventName:get_param_by_name(Event, ParamName).
+
+

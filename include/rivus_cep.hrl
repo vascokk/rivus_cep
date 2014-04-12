@@ -54,7 +54,8 @@
 	  win_register,
 	  event_win_pid,
 	  fsm_win_pid,
-	  query_plan = #query_plan{}
+	  query_plan = #query_plan{},
+	  stream_filters
 	 }).
 
 -record(query_ast,{

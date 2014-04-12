@@ -28,7 +28,8 @@ get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
 	       true -> {pattern, {remove_from_aliases(FromClause, [])}};
 	       false -> {remove_from_aliases(FromClause, [])}
 	   end,
-    [{Name}, {Select}, From, {Where}, {WithinClause}, {Filters}].
+    FiltersDict = orddict:from_list(Filters),
+    [{Name}, {Select}, From, {Where}, {WithinClause}, {FiltersDict}].
 
 
 get_events(Events)->
@@ -328,7 +329,7 @@ yecctoken2string(Other) ->
 
 
 
--file("src/rivus_cep_parser.erl", 331).
+-file("src/rivus_cep_parser.erl", 332).
 
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_0(S, Cat, Ss, Stack, T, Ts, Tzr);
@@ -2050,4 +2051,4 @@ yeccpars2_110_(__Stack0) ->
   end | __Stack].
 
 
--file("src/rivus_cep_parser.yrl", 270).
+-file("src/rivus_cep_parser.yrl", 271).

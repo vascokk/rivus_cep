@@ -29,8 +29,12 @@ query_worker_test_() ->
        fun load_query_2/0},
       {"Tes query on event sequence (event pattern matching)",
        fun load_pattern/0},
-       {"Tes query without producers",
-       fun load_query_no_producers/0}
+      {"Tes query without producers",
+       fun load_query_no_producers/0},
+      {"Tes stream filters",
+       fun stream_filter_1/0},
+      {"Tes stream filters",
+       fun stream_filter_2/0}
      ]
     }.
 
@@ -269,5 +273,86 @@ shared_streams_2() ->
     ?assert(lists:any(fun(T) -> T == {gr1,b,130} end, Values)),
     ?assert(lists:any(fun(T) -> T == {gr3,b,130} end, Values)),
 	    
+    gen_server:call(QueryPid,stop),
+    gen_server:call(Pid,stop).
+
+stream_filter_1() ->
+    {ok,Pid} = result_subscriber:start_link(),
+
+    QueryStr = "define correlation1 as
+                     select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
+                     from event1(eventparam1>10) as ev1, event2 as ev2
+                     where ev1.eventparam2 = ev2.eventparam2
+                     within 60 seconds; ",
+    
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_query_1], [Pid], []),
+    
+    Event1 = {event1, 10,b,c}, %
+    Event2 = {event1, 15,bbb,c},
+    Event3 = {event1, 20,b,c}, %
+    Event4 = {event2, 30,b,cc,d}, %
+    Event5 = {event2, 40,bb,cc,dd},
+
+    rivus_cep:notify(test_query_1, Event1),
+    rivus_cep:notify(test_query_1, Event2),
+    rivus_cep:notify(test_query_1, Event3),
+    rivus_cep:notify(test_query_1, Event4),
+    rivus_cep:notify(test_query_1, Event5),
+
+    timer:sleep(2000),
+    
+    {ok,Values} = gen_server:call(Pid, get_result),
+    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    ?assertEqual(1, length(Values)),
+    ?assertNot(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
+    
+    gen_server:call(QueryPid,stop),
+    gen_server:call(Pid,stop).
+
+stream_filter_2() ->
+    {ok,Pid} = result_subscriber:start_link(),
+
+    QueryStr = "define correlation1 as
+                     select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
+                     from event1(eventparam1>5, eventparam1<30) as ev1, event2(eventparam1<50) as ev2
+                     where ev1.eventparam2 = ev2.eventparam2
+                     within 60 seconds; ",
+    
+    {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_query_1], [Pid], []),
+
+    Event0 = {event1, 5,b,c}, %    
+    Event1 = {event1, 10,b,c}, %
+    Event2 = {event1, 15,bbb,c},
+    Event3 = {event1, 20,b,c}, %
+    Event3_1 = {event1, 30,b,c}, %
+    Event3_2 = {event1, 40,b,c}, %    
+    
+    Event4 = {event2, 30,b,cc,d}, %
+    Event4_1 = {event2, 60,b,cc,d}, %
+    Event4_2 = {event2, 70,b,cc,d}, %
+    Event5 = {event2, 40,bb,cc,dd},
+
+    rivus_cep:notify(test_query_1, Event0),
+    rivus_cep:notify(test_query_1, Event1),
+    rivus_cep:notify(test_query_1, Event2),
+    rivus_cep:notify(test_query_1, Event3),
+    rivus_cep:notify(test_query_1, Event3_1),
+    rivus_cep:notify(test_query_1, Event3_2),
+    rivus_cep:notify(test_query_1, Event4_1),
+    rivus_cep:notify(test_query_1, Event4_2),    
+    rivus_cep:notify(test_query_1, Event4),
+    rivus_cep:notify(test_query_1, Event5),
+
+    timer:sleep(2000),
+    
+    {ok,Values} = gen_server:call(Pid, get_result),
+    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
+    ?assertEqual(2, length(Values)),
+    ?assert(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
+    
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).

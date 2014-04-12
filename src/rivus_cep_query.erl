@@ -45,6 +45,7 @@ init(QD) ->
     {ok, #query_state{query_name = QueryName, 
 		      query_type = QueryType,
 		      window = QD#query_details.event_window,
+		      stream_filters = Filters, 
 		      fsm_window = QD#query_details.fsm_window,
 		      win_register =  QD#query_details.window_register,
 		      event_win_pid = QD#query_details.event_window_pid,

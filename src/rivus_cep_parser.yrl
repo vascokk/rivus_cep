@@ -152,7 +152,8 @@ get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
 	       true -> {pattern, {remove_from_aliases(FromClause, [])}};
 	       false -> {remove_from_aliases(FromClause, [])}
 	   end,
-    [{Name}, {Select}, From, {Where}, {WithinClause}, {Filters}].
+    FiltersDict = orddict:from_list(Filters),
+    [{Name}, {Select}, From, {Where}, {WithinClause}, {FiltersDict}].
 
 
 get_events(Events)->

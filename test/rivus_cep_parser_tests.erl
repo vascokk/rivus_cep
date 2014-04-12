@@ -157,8 +157,9 @@ parse_query_filter_1_test()->
                                                          select eventparam1
                                                          from event1(eventparam3=100, eventparam4=\"APPL\"); ", 1),
     ?assertEqual({ok,[{query1},
-    		      {[{event1,eventparam1}]},{[event1]},{nil},{nil}, {[{event1,[{eq,{event1,eventparam3},{integer,100}},
-										  {eq,{event1,eventparam4},{string,"APPL"}}]}]}
+    		      {[{event1,eventparam1}]},{[event1]},{nil},{nil},
+		      {orddict:from_list([{event1,[{eq,{event1,eventparam3},{integer,100}},
+						   {eq,{event1,eventparam4},{string,"APPL"}}]}])}
 		     ]},
     		 rivus_cep_parser:parse(Tokens)).
 
@@ -170,8 +171,8 @@ parse_query_filter_2_test()->
                                                               event2(eventpam1=300) as ev2; ", 1),
     ?assertEqual({ok,[{query1},
     		      {[{event1,eventparam1},{event2,eventparam2}]},{[event1,event2]},{nil},{nil},
-		      { [{event1,[{eq,{event1,eventparam3},{integer,100}},
-				  {eq,{event1,eventparam4},{string,"APPL"}}]},
-			 {event2,[{eq,{event2,eventpam1},{integer,300}}]}]}
+		      { orddict:from_list([{event1,[{eq,{event1,eventparam3},{integer,100}},
+						    {eq,{event1,eventparam4},{string,"APPL"}}]},
+					   {event2,[{eq,{event2,eventpam1},{integer,300}}]}])}
 		     ]},
     		 rivus_cep_parser:parse(Tokens)).
