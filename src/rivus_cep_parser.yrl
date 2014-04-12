@@ -2,7 +2,7 @@
 
 Header "%% Copyright (c)" "%% @Vasil Kolarov".
 
-Nonterminals declaration select_clause from_clause pattern where_clause within_clause name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function. 
+Nonterminals declaration select_clause from_clause pattern where_clause within_clause filter filter_predicates filter_predicate name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function literal. 
 
 Terminals define as select from where within seconds and or not if foreach '(' ')' '+' '-' '*' '/' '<' '>' '=' '<=' '>=' '<>' ',' '->' atom integer float index of '.' var string char count sum min max avg.
 
@@ -69,11 +69,29 @@ from_clause -> from pattern: {pattern, '$2'}.
 pattern -> event '->' event: ['$1','$3'].
 pattern -> event '->' pattern: ['$1', '$3'].
 
-event -> atom: {nil, value_of('$1')}. 
+event -> atom: {nil, value_of('$1')}.
+event -> atom filter: {nil, value_of('$1'), '$2'}.
 event -> atom as alias: {'$3',value_of('$1')}.
+event -> atom filter as alias: {'$4',value_of('$1'), '$2'}.
 events -> event: ['$1'].
 events -> event ',' events: flatten(['$1','$3']).
 
+filter -> '(' filter_predicates ')': '$2'.
+filter_predicates -> filter_predicate: ['$1'].
+filter_predicates -> filter_predicate ',' filter_predicates: flatten(['$1','$3']).
+
+filter_predicate -> event_param '=' literal: {'eq', '$1', '$3'}. 
+filter_predicate -> event_param '>' literal: {'gt', '$1', '$3'}. 
+filter_predicate -> event_param '<' literal: {'lt', '$1', '$3'}. 
+filter_predicate -> event_param '<=' literal: {'lte', '$1', '$3'}. 
+filter_predicate -> event_param '>=' literal: {'gte', '$1', '$3'}. 
+filter_predicate -> event_param '<>' literal: {'neq', '$1', '$3'}. 
+
+literal -> integer: {integer, value_of('$1')}.
+literal -> float: {float, value_of('$1')}.
+literal -> string: {string, value_of('$1')}.
+literal -> char: {char, value_of('$1')}.    
+    
 alias -> atom: value_of('$1').
 
 where_clause -> where predicates: '$2'.
@@ -119,17 +137,64 @@ type_of(Token) -> element(1, Token).
 flatten(L) -> lists:flatten(L).
 
 get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
-    {IsPattern, FromClause} = case _FromClause of
-				  {pattern, Events} -> {true, Events};
-				  _ -> {false, _FromClause}
+    %%?debugMsg(io_lib:format("_FromClause: ~p~n",[_FromClause])),
+    
+    {IsPattern, FromClause, Filters} = case _FromClause of
+					   {pattern, Events} -> {true, get_events(Events), get_filters(Events)};
+					   Events when is_list(Events) -> {false, get_events(Events), get_filters(Events)}
 			      end,
+    %%?debugMsg(io_lib:format("FromClause: ~p~n",[FromClause])),
+    %%?debugMsg(io_lib:format("Filters: ~p~n",[Filters])),
+
     Select = replace_select_aliases(SelectClause, FromClause),
     Where = replace_where_aliases(WhereClause, FromClause),
     From = case IsPattern of
 	       true -> {pattern, {remove_from_aliases(FromClause, [])}};
 	       false -> {remove_from_aliases(FromClause, [])}
 	   end,
-    [{Name}, {Select}, From, {Where}, {WithinClause}].
+    [{Name}, {Select}, From, {Where}, {WithinClause}, {Filters}].
+
+
+get_events(Events)->
+    get_events(Events, []).
+
+get_events([L|T], Acc) when is_list(L)->
+    Acc2 = get_events(L, []),
+    get_events(T, Acc ++ [get_events(L,[])]);
+get_events([{Alias, Event}|T], Acc) ->
+    get_events(T, Acc ++ [{Alias, Event}]);
+get_events([{Alias, Event, _}|T], Acc) ->
+    get_events(T, Acc ++ [{Alias, Event}]);
+get_events([], Acc) ->
+    Acc.
+
+
+get_filters(Events) ->
+    get_filters(Events, []).
+
+get_filters([L|T], Acc) when is_list(L)->
+    get_filters(T, Acc ++ get_filters(L,[]));
+get_filters([{_, _}|T], Acc) ->
+    get_filters(T, Acc);
+get_filters([{Alias, Event, FilterPred}|T], Acc) ->
+    get_filters(T, Acc ++ [{Event, replace_filter_aliases(Event,FilterPred)}]);
+get_filters([], Acc) ->
+    Acc.
+
+replace_filter_aliases(Event, Predicates) ->
+    lists:map(fun({Op, Left, Right}) ->
+		      {Op,
+		       replace_filter_alias(Event, Left),
+		       replace_filter_alias(Event, Right)}
+	      end, Predicates).
+
+replace_filter_alias(Event, {nil,Param}) ->
+    {Event,Param};
+replace_filter_alias(Event, {Alias, Param}) when Alias /= integer andalso Alias /= float andalso Alias /= string ->
+    {Event,Param};
+replace_filter_alias(Event, Predicate) ->
+    Predicate.
+
 
 
 replace_select_aliases({nil, E2}, FromTuples) ->

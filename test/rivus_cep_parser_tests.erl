@@ -18,7 +18,7 @@ parse_query_1_test()->
                                                          select eventparam
                                                          from event1; ", 1),
     ?assertEqual({ok,[{correlation1},
-    		      {[{event1,eventparam}]},{[event1]},{nil},{nil}]},
+    		      {[{event1,eventparam}]},{[event1]},{nil},{nil},{[]}]},
     		 rivus_cep_parser:parse(Tokens)).
 
 parse_query_2_test() ->
@@ -39,7 +39,7 @@ parse_query_3_test() ->
 		      {[{event1,eventparam1}]},
 		      {[event1]},
 		      {{eq,{event1,eventparam1},{integer,20}}},
-		      {60}]},
+		      {60},{[]}]},
 		 rivus_cep_parser:parse(Tokens)).
     
 
@@ -58,7 +58,7 @@ parse_query_4_test() ->
 		      {[event1,event2]},
 		      {{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
 			{gt,{event1,eventparam1},{event2,eventparam2}}}},
-		      {60}]},
+		      {60},{[]}]},
 		 rivus_cep_parser:parse(Tokens)).
 
 parse_query_5_test() ->
@@ -86,7 +86,7 @@ parse_query_5_test() ->
 			      {event2,eventparam4}},
 			{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
 			 {gt,{event1,eventparam1},{event2,eventparam2}}}}},
-		      {60}]},
+		      {60},{[]}]},
 		 rivus_cep_parser:parse(Tokens)).
 parse_query_6_test() ->
         {ok, Tokens, _Endline} = rivus_cep_scanner:string(
@@ -113,7 +113,7 @@ parse_query_6_test() ->
 			      {event2,eventparam4}},
 			{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
 			 {gt,{event1,eventparam1},{event2,eventparam2}}}}},
-		      {60}]},
+		      {60},{[]}]},
 		 rivus_cep_parser:parse(Tokens)).
 
 parse_pattern_test() ->
@@ -130,7 +130,7 @@ parse_pattern_test() ->
 		      {pattern,{[event1,event2]}},
 		      {{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
 			{gt,{event1,eventparam1},{event2,eventparam2}}}},
-		      {60}]},
+		      {60},{[]}]},
 		 rivus_cep_parser:parse(Tokens)).
 
 
@@ -149,6 +149,29 @@ parse_pattern_2_test() ->
 		      {pattern,{[event1,{event2,event3}]}},
 		      {{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
 			{eq,{event2,eventparam1},{event3,eventparam2}}}},
-		      {60}]},
+		      {60},{[]}]},
 		 rivus_cep_parser:parse(Tokens)).
 
+parse_query_filter_1_test()->
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string("define query1 as
+                                                         select eventparam1
+                                                         from event1(eventparam3=100, eventparam4=\"APPL\"); ", 1),
+    ?assertEqual({ok,[{query1},
+    		      {[{event1,eventparam1}]},{[event1]},{nil},{nil}, {[{event1,[{eq,{event1,eventparam3},{integer,100}},
+										  {eq,{event1,eventparam4},{string,"APPL"}}]}]}
+		     ]},
+    		 rivus_cep_parser:parse(Tokens)).
+
+
+parse_query_filter_2_test()->
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string("define query1 as
+                                                         select ev1.eventparam1, ev2.eventparam2
+                                                         from event1(eventparam3=100, eventparam4=\"APPL\") as ev1,
+                                                              event2(eventpam1=300) as ev2; ", 1),
+    ?assertEqual({ok,[{query1},
+    		      {[{event1,eventparam1},{event2,eventparam2}]},{[event1,event2]},{nil},{nil},
+		      { [{event1,[{eq,{event1,eventparam3},{integer,100}},
+				  {eq,{event1,eventparam4},{string,"APPL"}}]},
+			 {event2,[{eq,{event2,eventpam1},{integer,300}}]}]}
+		     ]},
+    		 rivus_cep_parser:parse(Tokens)).

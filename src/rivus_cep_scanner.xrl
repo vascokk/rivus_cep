@@ -26,7 +26,12 @@ Rules.
 "(\\\^.|\\.|[^"])*" :
 			%% Strip quotes.
 			S = lists:sublist(TokenChars, 2, TokenLen - 2),
-			{token,{string,TokenLine,string_gen(S)}}.
+			{token,{string,TokenLine,S}}.
+\'(\\.|\\\n|[^'\n])*\' :
+			%% Strip quotes.
+			S = lists:sublist(TokenChars, 2, TokenLen - 2),
+			{token,{string,TokenLine,S}}.
+
 \$(\\{O}{O}{O}|\\\^.|\\.|.) :
 			{token,{char,TokenLine,cc_convert(TokenChars)}}.
 \+		:	{token,{'+',TokenLine}}.
