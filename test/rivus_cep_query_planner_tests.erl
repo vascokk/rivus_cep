@@ -212,10 +212,10 @@ get_join_keys_3_test() ->
     Events = [event1, event2],
     ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam2,eventparam4]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
 
-get_join_keys_4_test() ->
-    Predicate =  {eq,{event1,eventparam1},{integer, 10}},
-    Events = [event1],
-    ?assertEqual([], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
+%% get_join_keys_4_test() ->
+%%     Predicate =  {eq,{event1,eventparam1},{integer, 10}},
+%%     Events = [event1],
+%%     ?assertEqual([], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
 
 get_start_state_test() ->
     ?assertEqual(a, rivus_cep_query_planner:get_start_state([a,b,c])),

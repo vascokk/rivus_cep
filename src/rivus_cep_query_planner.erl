@@ -35,7 +35,7 @@
 	 is_last/2]).
 
 
-analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_WithinClause}]) ->
+analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_WithinClause}, {Filters}]) ->
     case FromClause of
 	{pattern, {Pattern}} -> CNF =  to_cnf(WhereClause),    
 				PL =  predicates_to_list(CNF),

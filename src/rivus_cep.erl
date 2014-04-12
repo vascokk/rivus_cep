@@ -168,7 +168,7 @@ parse_query(QueryStr) ->
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),
     QueryClauses.
 
-register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, {WithinClause}], Options, WinReg) ->
+register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, {WithinClause}, {Filters}], Options, WinReg) ->
     Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
     %%{ok, EvWinPid} = rivus_cep_window:start_link(Mod),
     

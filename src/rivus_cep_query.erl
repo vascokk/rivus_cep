@@ -24,7 +24,7 @@
 
 
 init(QD) -> 
-    [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}] = QD#query_details.clauses,
+    [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}, {Filters}] = QD#query_details.clauses,
     {QueryType, Events} = case FromClause of
                                    {pattern, {List}} -> {pattern, List};
                                    {List} -> {simple, List}
