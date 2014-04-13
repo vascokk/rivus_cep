@@ -177,9 +177,15 @@ get_predicates_on_edge(G, V1, V2) ->
 
 
 get_join_keys(Predicate) ->
-    {L, R, List} = get_join_keys(start, Predicate, {false, false, orddict:new()}),
+    {L, R, Dict} = get_join_keys(start, Predicate, {false, false, orddict:new()}),
     case {L,R} of
-	{true,true} -> List;
+	{true,true} -> Set = lists:foldl(fun({Name, _}, Acc) -> sets:add_element(Name, Acc) end,
+					  sets:new(),
+					  orddict:to_list(Dict)),
+		       case length(sets:to_list(Set)) <2 of
+			   true -> [];
+			   false -> Dict
+		       end;
 	_ -> []
     end.
 
