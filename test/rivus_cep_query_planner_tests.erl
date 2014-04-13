@@ -195,27 +195,36 @@ pattern_to_graph_2_test() ->
     
 get_join_keys_test() ->
     Predicate =  {eq,{event1,eventparam1},{event2, eventparam1}},
-    Events = [event1, event2],
-    ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam1]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
+    ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam1]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Predicate))).
 
 get_join_keys_2_test() ->
     Predicate =  {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
 			{gt,{event1,eventparam1},{event2,eventparam2}}},
-    Events = [event1, event2],
-    ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam2]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
+    ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam2]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Predicate))).
 
 get_join_keys_3_test() ->
     Predicate = {'or',{gt,{plus,{mult,{event1,eventparam1},{event2,eventparam2}},{integer,4}},
-			      {event2,eventparam4}},
-			{'and',{eq,{event1,eventparam1},{event2,eventparam2}},
-			 {gt,{event1,eventparam1},{event2,eventparam2}}}},
-    Events = [event1, event2],
-    ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam2,eventparam4]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
+		          {event2,eventparam4}
+		      },
+		 {'and',{eq,{event1,eventparam1},{event2,eventparam2}},
+		  {gt,{event1,eventparam1},{event2,eventparam2}}}},
+    ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam2,eventparam4]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Predicate))).
 
-%% get_join_keys_4_test() ->
-%%     Predicate =  {eq,{event1,eventparam1},{integer, 10}},
-%%     Events = [event1],
-%%     ?assertEqual([], orddict:to_list(rivus_cep_query_planner:get_join_keys(Events, Predicate))).
+get_join_keys_4_test() ->
+    Predicate =  {eq,{event1,eventparam1},{integer, 10}},
+    ?assertEqual([], orddict:to_list(rivus_cep_query_planner:get_join_keys(Predicate))).
+
+get_join_keys_5_test() ->
+    Predicate =  {'and', {eq,{event1,eventparam1},{integer, 10}},
+		         {eq,{event1,eventparam2},{integer, 200}}
+		 },
+    ?assertEqual([], orddict:to_list(rivus_cep_query_planner:get_join_keys(Predicate))).
+
+get_join_keys_6_test() ->
+    Predicate = {eq, {mult,{event1,eventparam1}, {integer,4}},
+		     {event2,eventparam4}
+		},
+    ?assertEqual([{event1,[eventparam1]}, {event2, [eventparam4]}], orddict:to_list(rivus_cep_query_planner:get_join_keys(Predicate))).
 
 get_start_state_test() ->
     ?assertEqual(a, rivus_cep_query_planner:get_start_state([a,b,c])),

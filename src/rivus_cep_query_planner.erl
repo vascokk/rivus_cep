@@ -19,7 +19,7 @@
 -include("rivus_cep.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([analyze/1, get_join_keys/2,
+-export([analyze/1, get_join_keys/1,
 	 to_cnf/1,
 	 to_single_predicate/1,
 	 predicates_to_list/1,
@@ -35,14 +35,14 @@
 	 is_last/2]).
 
 
-analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_WithinClause}, {Filters}]) ->
+analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_WithinClause}, {_Filters}]) ->
     case FromClause of
 	{pattern, {Pattern}} -> CNF =  to_cnf(WhereClause),    
 				PL =  predicates_to_list(CNF),
 				PV =  get_predicate_variables(PL),
 				G =  pattern_to_graph(PV, Pattern),				
 				#query_plan{fsm = G};
-	{EventsList} -> #query_plan{join_keys = get_join_keys(EventsList, WhereClause)}
+	{_EventsList} -> #query_plan{join_keys = get_join_keys(WhereClause)}
     end.
 
 sort_predicates(WhereClause) ->
@@ -127,8 +127,8 @@ pattern_to_graph(Start, PredVars, [First,Second|T], G) when is_atom(First), is_t
 				digraph:add_edge(G, E, FV, SV, Labels),
 				NewPredVars;
 			   			       
-			   (T, PV) when is_tuple(T) ->
-				L = tuple_to_list(T),
+			   (Tup, PV) when is_tuple(Tup) ->
+				L = tuple_to_list(Tup),
 				SV = digraph:add_vertex(G, hd(L)),
 
 				E = digraph:add_edge(G, FV, SV, []),
@@ -169,25 +169,59 @@ remove_predicate(Key, PVSet) ->
 
 get_predicates_on_edge(G, V1, V2) ->
     [Edge] = lists:filter(fun(E) ->
-				   {E_tmp, V1_tmp, V2_tmp, _ } = digraph:edge(G,E),
+				   {_E_tmp, _V1_tmp, V2_tmp, _ } = digraph:edge(G,E),
 				   V2_tmp == V2
 			   end, digraph:out_edges(G,V1)),
     {_,_,_,Label} = digraph:edge(G, Edge),
     Label.
 
-get_join_keys(Events, Predicate) ->
-    Keys = [{Event, ordsets:to_list(get_join_keys(Predicate, Event, ordsets:new()))} || Event <- Events],
-    lists:foldl(fun({Event, Params}, Acc) -> orddict:store(Event, Params, Acc) end, orddict:new(), Keys).
 
-get_join_keys({_, Left, Right}, Event, Acc) ->
-    NewAcc = get_join_keys(Left, Event, Acc),
-    get_join_keys(Right, Event, NewAcc);
-get_join_keys({neg,Predicate}, Event, Acc) ->
-    {neg, get_join_keys(Predicate, Event, Acc)};
-get_join_keys({EventName, Value}, Event, Acc) ->
-    case EventName of
-    	Event -> ordsets:add_element(Value, Acc);
-    	_ -> Acc
+get_join_keys(Predicate) ->
+    {L, R, List} = get_join_keys(start, Predicate, {false, false, orddict:new()}),
+    case {L,R} of
+	{true,true} -> List;
+	_ -> []
+    end.
+
+get_join_keys(_Side, {_, Left, Right}, {L, R, Acc}) ->
+    {L1, R1, NewAcc1} = get_join_keys(left, Left, {L, R, Acc}),
+    {L2, R2, NewAcc2} = get_join_keys(right, Right, {L1, R1, Acc}),
+    List = orddict:to_list(NewAcc1) ++ orddict:to_list(NewAcc2),
+    NewAcc = lists:foldl(fun({Name, Val}, FAcc) ->
+				 case orddict:is_key(Name, FAcc) of
+				     true -> orddict:update(Name, fun(Old) ->
+									  sets:to_list(sets:union(sets:from_list(Val),sets:from_list(Old)))
+								  end, hd(Val), FAcc);
+				     false -> orddict:store(Name, lists:flatten(Val), FAcc)
+				 end
+			 end,
+			 orddict:new(),
+			 lists:flatten(List)
+			),
+    {L2, R2, NewAcc};
+get_join_keys(Side, {neg, Predicate}, {L, R, Acc}) ->
+    get_join_keys(Side, Predicate, {L, R, Acc});
+get_join_keys(_, {integer, _Value}, {L, R, Acc}) ->
+    {L,R, Acc};
+get_join_keys(_, {float, _Value}, {L, R, Acc}) ->
+    {L,R, Acc};
+get_join_keys(_, {string, _Value}, {L, R, Acc}) ->
+    {L,R, Acc};
+get_join_keys(Side, {EventName, Value}, {L,R, Acc}) ->
+    List = ordsets:to_list(ordsets:add_element({EventName, Value}, ordsets:from_list(orddict:to_list(Acc)))),
+   
+    NewAcc = lists:foldl(fun({Name, Val}, FAcc) ->
+				 case orddict:is_key(Name, FAcc) of
+				     true -> orddict:append(Name, Val, FAcc);
+				     false -> orddict:store(Name, [Val], FAcc)
+				 end
+			 end,
+			 orddict:new(),
+			 lists:flatten(List)
+			),
+    case Side of
+	left -> {true, R, NewAcc};
+	right -> {L, true, NewAcc}
     end.
 
 is_first(G, StateName) ->
