@@ -20,7 +20,7 @@
 -include_lib("stdlib/include/qlc.hrl").
 -include("rivus_cep.hrl").
 
--export([init/1, process_event/2, get_result/1]).
+-export([init/1, apply_filters/2, process_event/2, get_result/1]).
 
 
 init(QD) -> 
@@ -288,27 +288,60 @@ eval_fsm_state(EventName, FsmKey, Fsm,  #query_state{fsm_win_pid = FsmWinPid} = 
 		 []
     end.
     
-
-%%----------------------------------------------------------------------------------------------
-%% gen_server functions
-%%----------------------------------------------------------------------------------------------
-
-
 process_event(Event, #query_state{query_type = QueryType, window = Window, event_win_pid=Pid} = State) when QueryType == simple->
     lager:debug("rivus_cep_query:process_event, query_type: simple,  Event: ~p",[Event]),
-
-    case Window of
-	global -> ok;
-	_ -> rivus_cep_window:update(Pid, Window, Event)		
-    end,
-    get_result(State);
+    case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
+    	true-> case Window of
+		   global -> ok;
+		   _ -> rivus_cep_window:update(Pid, Window, Event)		
+	       end,
+	       get_result(State);
+    	false -> []
+    end;
 process_event(Event, #query_state{query_type = QueryType} = State) when QueryType == pattern ->
     EventName = element(1, Event),
     lager:debug("rivus_cep_query:process_event, query_type: pattern, EventName: ~p,  Event: ~p",[EventName,Event]),
-    case is_initial_state(EventName, State) of
-	false -> eval_fsm(EventName, Event, State);
-	true -> create_new_fsm(EventName, Event, State),
-		[]
+    case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
+     	true -> case is_initial_state(EventName, State) of
+		    false -> eval_fsm(EventName, Event, State);
+		    true -> create_new_fsm(EventName, Event, State),
+			    []
+		end;
+     	false -> []
     end.
-
     
+apply_filters(Event, FiltersDict) ->
+    EventName = element(1, Event),
+    Filters = case orddict:is_key(EventName, FiltersDict) of
+		  true -> orddict:fetch(EventName, FiltersDict);
+		  false -> []
+	      end,
+    lists:foldl(fun(Filter, Acc) ->
+			case eval_filter(Event, Filter) of
+			    true -> Acc;
+			    false -> false
+			end
+		end,
+		true, Filters).
+
+eval_filter(Event, {eq, Left, Right}) ->
+    eval_filter(Event, Left) == eval_filter(Event,Right);
+eval_filter(Event, {lt, Left, Right}) ->
+    eval_filter(Event, Left) < eval_filter(Event,Right);
+eval_filter(Event, {gt, Left, Right}) ->
+    eval_filter(Event, Left) > eval_filter(Event,Right);
+eval_filter(Event, {lte, Left, Right}) ->
+    eval_filter(Event, Left) =< eval_filter(Event,Right);
+eval_filter(Event, {gte, Left, Right}) ->
+    eval_filter(Event, Left) >= eval_filter(Event,Right);
+eval_filter(Event, {ne, Left, Right}) ->
+    eval_filter(Event, Left) /= eval_filter(Event,Right);
+eval_filter(_Event, {integer, Value}) ->
+    Value;
+eval_filter(_Event, {float, Value}) ->
+    Value;
+eval_filter(_Event, {string, Value}) ->
+    Value;
+eval_filter(Event, {EventName, ParamName}) ->
+    EventName:get_param_by_name(Event, ParamName).
+

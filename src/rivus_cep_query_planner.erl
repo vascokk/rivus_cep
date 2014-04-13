@@ -182,7 +182,7 @@ get_join_keys(Predicate) ->
 	{true,true} -> Set = lists:foldl(fun({Name, _}, Acc) -> sets:add_element(Name, Acc) end,
 					  sets:new(),
 					  orddict:to_list(Dict)),
-		       case length(sets:to_list(Set)) <2 of
+		       case length(sets:to_list(Set)) < 2 of
 			   true -> [];
 			   false -> Dict
 		       end;
