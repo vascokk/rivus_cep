@@ -56,18 +56,19 @@ init(QD) ->
 		      query_ast = Ast,		
 		      query_plan = Plan}}.
 
-get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, window = Window} = _State) when Window == global ->    
-    PreResultSet = rivus_cep_window:get_pre_result(global, WinReg, Events),
- 
-    lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
 
-    CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], PreResultSet),
-
-    lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
-
+get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, window = Window}) when Window == global ->
     WhereClause = Ast#query_ast.where,
     SelectClause = Ast#query_ast.select,
+
+    PreResultSet = rivus_cep_window:get_pre_result(global, WinReg, Events),
+			   
+    lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
     
+    CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], PreResultSet),
+    
+    lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
+			   
     FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(WhereClause, ResRecord) ],
     
     lager:debug("---> Filtered Result: ~p", [FilteredRes]),
@@ -88,7 +89,7 @@ get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, win
 	     lager:debug("---> Result: ~p <-----", [Result]),
 	     Result
     end;
-get_result(#query_state{events=Events, window = Window, query_ast = Ast, event_win_pid = Pid} = _State) when Window /= global->
+get_result(#query_state{events=Events, window = Window, query_ast = Ast, event_win_pid = Pid}) when Window /= global->
     
     PreResultSet = rivus_cep_window:get_pre_result(Pid, local, Window, Events),
  
@@ -133,9 +134,9 @@ eval_fsm_predicates(Fsm, EventName, Event, State) ->
 	     eval_fsm_predicates(Fsm, Event, SinglePredicate, Events, State)    
     end.
 
-eval_fsm_predicates(Fsm, Event, Predicates, Events, #query_state{event_win_pid = Pid} = _State) ->
+eval_fsm_predicates(Fsm, Event, Predicates, Events, #query_state{event_win_pid = Pid}) ->
     Window = Fsm#fsm.fsm_events,
-  
+ 
     PreResultSet = rivus_cep_window:get_pre_result(Pid, local, Window, Events),
     
     lager:debug("---> Pre-Result Set: ~p", [PreResultSet++ [[Event]]]),
@@ -153,7 +154,7 @@ eval_fsm_predicates(Fsm, Event, Predicates, Events, #query_state{event_win_pid =
 	_ -> erlang:error({badres, "Non-list resultset returned"})
     end.
 	    
-eval_fsm_result(Fsm, EventName, #query_state{query_ast = Ast, event_win_pid = Pid} = _State) ->
+eval_fsm_result(Fsm, EventName, #query_state{query_ast = Ast, event_win_pid = Pid}) ->
     G = Fsm#fsm.fsm_graph,   
     Predicates = Ast#query_ast.where,
     Events =  Events = rivus_cep_query_planner:get_events_on_path(G, EventName),            
@@ -295,6 +296,7 @@ process_event(Event, #query_state{query_type = QueryType, window = Window, event
 		   global -> ok;
 		   _ -> rivus_cep_window:update(Pid, Window, Event)		
 	       end,
+	       %%orddict:to_list((State#query_state.query_plan)#query_plan.join_keys) 
 	       get_result(State);
     	false -> []
     end;

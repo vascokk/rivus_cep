@@ -49,21 +49,14 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(Event, #query_state{query_type = QueryType} = State) when QueryType == simple->
-    lager:debug("handle_info, query_type: simple,  Event: ~p",[Event]),
+handle_info(Event, #query_state{query_type = QueryType} = State) ->
+    lager:debug("handle_info, query_type: ~p,  Event: ~p",[QueryType, Event]),
     Result = rivus_cep_query:process_event(Event, State),
     case Result of
 	[] -> [];
 	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
     end,
 {noreply, State};
-handle_info(Event, #query_state{query_type = QueryType} = State) when QueryType == pattern ->
-    Result = rivus_cep_query:process_event(Event, State),
-    case Result of
-	[] -> [];
-	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
-    end,    
-    {noreply, State}; 
 handle_info(Info, State) ->
     lager:debug("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ State#query_state.query_name ,Info]),
     {noreply, State}.
