@@ -37,6 +37,7 @@
 -include_lib("folsom/include/folsom.hrl").
 
 -record(state, {query_sup,
+		clock_sup,
 	        win_register = dict:new()}).
 
 %%--------------------------------------------------------------------
@@ -71,7 +72,14 @@ init([Supervisor]) ->
 		    10000,
 		    supervisor,
 		    [rivus_cep_query_worker_sup]},
+    BatchClockSupSpec = {batch_clock_sup,
+		    {rivus_cep_clock_sup, start_link, []},
+		    permanent,
+		    10000,
+		    supervisor,
+		    [rivus_cep_clock_sup]},    
     self() ! {start_query_supervisor, Supervisor, QuerySupSpec},
+    self() ! {start_batch_clock_supervisor, Supervisor, BatchClockSupSpec},    
     lager:info("--- Rivus CEP server started"),
     {ok, #state{}}.
 
@@ -129,6 +137,10 @@ handle_info({start_query_supervisor, Supervisor, QuerySupSpec}, State) ->
     {ok, Pid} = supervisor:start_child(Supervisor, QuerySupSpec),
     link(Pid),
     {noreply, State#state{query_sup=Pid}};
+handle_info({start_batch_clock_supervisor, Supervisor, BatchClockSupSpec}, State) ->
+    {ok, Pid} = supervisor:start_child(Supervisor, BatchClockSupSpec),
+    link(Pid),
+    {noreply, State#state{clock_sup=Pid}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -168,7 +180,7 @@ parse_query(QueryStr) ->
     {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),
     QueryClauses.
 
-register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, {WithinClause}, {Filters}], Options, WinReg) ->
+register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, WithinClause, {_Filters}], Options, WinReg) ->
     Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
     %%{ok, EvWinPid} = rivus_cep_window:start_link(Mod),
     
@@ -188,8 +200,8 @@ register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, {WithinCla
 	     {{register_local_window(WithinClause, EvWinPid), EvWinPid}, {nil,nil}, WinReg}
     end.
 
-register_local_window(WithinClause, Pid) ->
-    rivus_cep_window:new(Pid, slide, WithinClause).
+register_local_window({Within, _WindowsType}, Pid) ->
+    rivus_cep_window:new(Pid, slide, Within).
 
 register_global_windows(Events, WithinClause, WinReg) ->
     NewWinReg = lists:foldl(fun(Event, Register) -> case dict:is_key(Event, Register) of
@@ -200,18 +212,18 @@ register_global_windows(Events, WithinClause, WinReg) ->
     lager:debug("Windows Register: ~p~n",[NewWinReg]),
     NewWinReg.
 
-maybe_update_window_size(Event, WinReg, WithinClause) ->
+maybe_update_window_size(Event, WinReg, {Within, _WindowsType}) ->
     Window = dict:fetch(Event, WinReg),
     Size = Window#slide.window,
-    case Size < WithinClause of
-	true -> NewWindow = rivus_cep_window:resize(Window, WithinClause),
+    case Size < Within of
+	true -> NewWindow = rivus_cep_window:resize(Window, Within),
 		dict:store(Event, NewWindow, WinReg);
 	false -> WinReg
     end.
 	     
     
-create_new_global_window(Event, WinReg, WithinClause) ->
+create_new_global_window(Event, WinReg, {Within, _WindowType}) ->
     %% Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
     %% {ok, EvWinPid} = rivus_cep_window:start_link(Mod),    
-    Window = rivus_cep_window:new(slide, WithinClause),
+    Window = rivus_cep_window:new(slide, Within),
     dict:store(Event, Window, WinReg).

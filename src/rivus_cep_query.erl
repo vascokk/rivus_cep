@@ -24,13 +24,19 @@
 
 
 init(QD) -> 
-    [{QueryName}, {SelectClause}, FromClause, {WhereClause}, {WithinClause}, {Filters}] = QD#query_details.clauses,
+    [{QueryName}, {SelectClause}, FromClause, {WhereClause}, WithinClause, {Filters}] = QD#query_details.clauses,    
     {QueryType, Events} = case FromClause of
                                    {pattern, {List}} -> {pattern, List};
                                    {List} -> {simple, List}
                                end,
+    
+    {Within, WindowType} = case WithinClause of
+			       {WD, WT} -> {WD, WT};
+			       {WD} when is_integer(WD) -> {WD, sliding};
+			       nil -> {nil, nil}					 
+			   end,
    
-    Ast = #query_ast{select=SelectClause, from=FromClause, where=WhereClause, within=WithinClause},
+    Ast = #query_ast{select=SelectClause, from=FromClause, where=WhereClause, within=Within},
 
     case QD#query_details.event_window of
     	global -> [ gproc:reg({p, l, {Producer, Event, global }}) || Producer<-QD#query_details.producers, Event <- Events];
@@ -54,7 +60,8 @@ init(QD) ->
 		      subscribers = QD#query_details.subscribers,
 		      events = Events,
 		      query_ast = Ast,		
-		      query_plan = Plan}}.
+		      query_plan = Plan,
+		      window_type = WindowType }}.
 
 
 get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, window = Window}) when Window == global ->
@@ -211,14 +218,19 @@ where_eval({Type, Value}, ResRecord) ->
     case Type of
 	integer -> Value;
 	float -> Value;
+	atom -> Value;
 	EventName -> Event = lists:keyfind(EventName,1,ResRecord),
 		     (EventName):get_param_by_name(Event,Value)
 
-    end.
+    end;
+where_eval(nil, _ResRecord) ->
+    true.
 
 select_eval({integer, Value}, _) ->
      Value;
 select_eval({float, Value}, _) ->
+    Value;
+select_eval({atom, Value}, _) ->
     Value;
 select_eval({EventName,ParamName}, ResRecord) when not is_tuple(EventName) andalso not is_tuple(ParamName)->
     Event = lists:keyfind(EventName,1,ResRecord),
@@ -288,7 +300,19 @@ eval_fsm_state(EventName, FsmKey, Fsm,  #query_state{fsm_win_pid = FsmWinPid} = 
 	false -> rivus_cep_window:update_fsm(FsmWinPid, FsmWindow, FsmKey, Fsm#fsm{fsm_state = EventName}),
 		 []
     end.
-    
+
+reset_fsm() ->
+    todo.
+
+process_event(Event, #query_state{query_type = QueryType, window = Window, event_win_pid=Pid, window_type=WindowType} = State) when QueryType == simple andalso  WindowType == batch->
+    lager:debug("rivus_cep_query:process_event, query_type: simple,  Event: ~p",[Event]),
+    case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
+    	true-> case Window of
+		   global -> ok;
+		   _ -> rivus_cep_window:update(Pid, Window, Event)		
+	       end;
+    	false -> []
+    end;
 process_event(Event, #query_state{query_type = QueryType, window = Window, event_win_pid=Pid} = State) when QueryType == simple->
     lager:debug("rivus_cep_query:process_event, query_type: simple,  Event: ~p",[Event]),
     case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
@@ -296,7 +320,6 @@ process_event(Event, #query_state{query_type = QueryType, window = Window, event
 		   global -> ok;
 		   _ -> rivus_cep_window:update(Pid, Window, Event)		
 	       end,
-	       %%orddict:to_list((State#query_state.query_plan)#query_plan.join_keys) 
 	       get_result(State);
     	false -> []
     end;
@@ -343,6 +366,8 @@ eval_filter(_Event, {integer, Value}) ->
 eval_filter(_Event, {float, Value}) ->
     Value;
 eval_filter(_Event, {string, Value}) ->
+    Value;
+eval_filter(_Event, {atom, Value}) ->
     Value;
 eval_filter(Event, {EventName, ParamName}) ->
     EventName:get_param_by_name(Event, ParamName).

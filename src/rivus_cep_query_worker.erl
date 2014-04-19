@@ -22,7 +22,7 @@
 -include("rivus_cep.hrl").
 
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, code_change/3, terminate/2]).
--export([start_link/1]).
+-export([start_link/1, generate_result/1]).
 
 
 %%% API functions
@@ -32,8 +32,19 @@ start_link(QueryDetails) ->
     gen_server:start_link( {local, QueryName}, ?MODULE, [QueryDetails], []).
 
 init([QueryDetails]) ->
-    {ok, State} = rivus_cep_query:init(QueryDetails), 
-    {ok, State}.
+    {ok, State} = rivus_cep_query:init(QueryDetails),
+    Timeout = State#query_state.query_ast#query_ast.within,
+    WindowType = State#query_state.window_type,
+    case WindowType of
+	batch -> %%ClockPid = rivus_cep_clock_sup:start_clock_server(self(), Timeout),
+		 self() ! {start_clock_server, Timeout},
+		 {ok, State};
+	_ -> {ok, State}
+    end.
+
+
+generate_result(Pid) ->
+    gen_server:cast(Pid, generate_result).
 
 
 
@@ -46,9 +57,25 @@ handle_call(_Request, _From, State) ->
     Reply = {ok, notsupported} ,
     {reply, Reply, State}.
 
+handle_cast(generate_result, State) ->
+    lager:debug("Statement: ~p,  handle_cast got event: generate_result. ~n",[State#query_state.query_name]),
+    Result = rivus_cep_query:get_result(State),
+    case Result of
+    	[] -> [];
+    	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+    end,    
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+handle_info({start_clock_server, Timeout}, State) ->
+    lager:debug("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ State#query_state.query_name ,start_clock_server]),
+    ClockPid = rivus_cep_clock_sup:start_clock_server(self(), Timeout * 1000),
+    {noreply, State#query_state{batch_clock_pid = ClockPid}}; 
+handle_info(Event, #query_state{query_type = QueryType, window_type = WindowType} = State) when WindowType == batch ->
+    lager:debug("handle_info, query_type: ~p (batch),  Event: ~p",[QueryType, Event]),
+    rivus_cep_query:process_event(Event, State),
+    {noreply, State};
 handle_info(Event, #query_state{query_type = QueryType} = State) ->
     lager:debug("handle_info, query_type: ~p,  Event: ~p",[QueryType, Event]),
     Result = rivus_cep_query:process_event(Event, State),
@@ -56,7 +83,16 @@ handle_info(Event, #query_state{query_type = QueryType} = State) ->
 	[] -> [];
 	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
     end,
-{noreply, State};
+    {noreply, State};    
+%% handle_info(timeout, #query_state{window_type=WindowType}=State) when WindowType == batch->
+%%     lager:debug("Statement: ~p,  handle_info got event: timeout. Will do nothingproduce result ...~n",[]),
+%%     Timeout = State#query_state.query_ast#query_ast.within,
+%%     Result = rivus_cep_query:get_result(State),
+%%     case Result of
+%%     	[] -> [];
+%%     	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+%%     end,    
+%%     {noreply, State, Timeout};   
 handle_info(Info, State) ->
     lager:debug("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ State#query_state.query_name ,Info]),
     {noreply, State}.

@@ -1,5 +1,5 @@
 %%------------------------------------------------------------------------------
-%% Copyright (c) 2013 Vasil Kolarov
+%% Copyright (c) 2013-2014 Vasil Kolarov
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -14,28 +14,22 @@
 %% limitations under the License.
 %%------------------------------------------------------------------------------
 
--module(rivus_cep_app).
+-module(rivus_cep_clock_sup).
+-behaviour(supervisor).
+-export([start_link/0,
+	 init/1,
+	 start_clock_server/2]).
 
--behaviour(application).
+start_link () ->
+    supervisor:start_link({local,?MODULE},?MODULE,[]).
 
-%% Application callbacks
--export([start/0, stop/0, start/2, stop/1]).
+start_clock_server(QueryPid, Interval) ->
+    {ok, Pid} = supervisor:start_child(?MODULE, [QueryPid, Interval]),
+    Pid.
 
-start() ->
-    start(normal, []).
-
-stop() ->
-    stop([]).
-
-start(_StartType, _StartArgs) ->
-    case rivus_cep_sup:start_link() of
-	{ok, Pid} ->
-	    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
-	    {ok, _} = rivus_cep_window:start_link(Mod, global), %% TODO supervisor
-	    {ok, Pid};
-	Error ->
-	    Error
-    end.
- 
-stop(_State) ->
-    ok.
+init ([]) ->
+    {ok,{{simple_one_for_one, 3, 180},
+         [
+          {undefined, {rivus_cep_clock_server, start_link, []},
+           transient, brutal_kill, worker, [rivus_cep_clock_server]}
+         ]}}.

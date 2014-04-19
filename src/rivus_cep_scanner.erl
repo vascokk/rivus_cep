@@ -39,6 +39,9 @@ reserved_word('count') -> true;
 reserved_word('avg') -> true;
 reserved_word('min') -> true;
 reserved_word('max') -> true;
+reserved_word('sliding') -> true;
+reserved_word('batch') -> true;
+reserved_word('tumbling') -> true;
 reserved_word(_) -> false.
 
 cc_convert([$$,$\\|Cs]) ->
@@ -332,7 +335,7 @@ yysuf(List, N) -> lists:nthtail(N, List).
 %% return signal either an unrecognised character or end of current
 %% input.
 
--file("src/rivus_cep_scanner.erl", 334).
+-file("src/rivus_cep_scanner.erl", 337).
 yystate() -> 40.
 
 yystate(43, [92|Ics], Line, Tlen, _, _) ->

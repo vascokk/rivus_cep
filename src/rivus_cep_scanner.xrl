@@ -80,6 +80,9 @@ reserved_word('count') -> true;
 reserved_word('avg') -> true;
 reserved_word('min') -> true;
 reserved_word('max') -> true;
+reserved_word('sliding') -> true;
+reserved_word('batch') -> true;
+reserved_word('tumbling') -> true;
 reserved_word(_) -> false.
 
 cc_convert([$$,$\\|Cs]) ->

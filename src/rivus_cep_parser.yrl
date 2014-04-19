@@ -2,9 +2,9 @@
 
 Header "%% Copyright (c)" "%% @Vasil Kolarov".
 
-Nonterminals declaration select_clause from_clause pattern where_clause within_clause filter filter_predicates filter_predicate name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function literal. 
+Nonterminals declaration select_clause from_clause pattern where_clause within_clause filter filter_predicates filter_predicate name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function literal window_type. 
 
-Terminals define as select from where within seconds and or not if foreach '(' ')' '+' '-' '*' '/' '<' '>' '=' '<=' '>=' '<>' ',' '->' atom integer float index of '.' var string char count sum min max avg.
+Terminals define as select from where within seconds and or not if foreach '(' ')' '+' '-' '*' '/' '<' '>' '=' '<=' '>=' '<>' ',' '->' atom integer float index of '.' var string char count sum min max avg sliding batch tumbling.
 
 Rootsymbol declaration.
 
@@ -91,7 +91,8 @@ literal -> integer: {integer, value_of('$1')}.
 literal -> float: {float, value_of('$1')}.
 literal -> string: {string, value_of('$1')}.
 literal -> char: {char, value_of('$1')}.    
-    
+literal -> atom: {atom, value_of('$1')}.
+
 alias -> atom: value_of('$1').
 
 where_clause -> where predicates: '$2'.
@@ -108,7 +109,7 @@ expression -> float: {float, value_of('$1')}.
 
 predicates -> predicates 'or' predicates:  {'or','$1','$3'}.
 predicates -> predicates 'and'  predicates:  {'and','$1','$3'}.
-predicates -> 'not' predicate: {neg, '$2'}.
+predicates -> 'not' predicates: {neg, '$2'}.
 predicates -> predicate: '$1'.
 predicate -> '(' predicate ')' : '$2'.
 predicate -> expression '=' expression: {'eq','$1','$3'}.
@@ -119,6 +120,11 @@ predicate -> expression '>=' expression: {'gte','$1','$3'}.
 predicate -> expression '<>' expression: {'neq','$1','$3'}.
 
 within_clause -> within integer seconds: value_of('$2').
+within_clause -> within integer seconds window_type: {value_of('$2'), '$4'}.
+
+window_type -> sliding : sliding.
+window_type -> batch : batch.
+%% TODO window_type -> tumbling : tumbling.
 
 function -> sum: '$1'.
 function -> count: '$1'.
@@ -138,6 +144,7 @@ flatten(L) -> lists:flatten(L).
 
 get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
     %%?debugMsg(io_lib:format("_FromClause: ~p~n",[_FromClause])),
+    %%?debugMsg(io_lib:format("Within clause: ~p~n",[WithinClause])),
     
     {IsPattern, FromClause, Filters} = case _FromClause of
 					   {pattern, Events} -> {true, get_events(Events), get_filters(Events)};
@@ -153,7 +160,12 @@ get_ast({Name, SelectClause, _FromClause, WhereClause, WithinClause}) ->
 	       false -> {remove_from_aliases(FromClause, [])}
 	   end,
     FiltersDict = orddict:from_list(Filters),
-    [{Name}, {Select}, From, {Where}, {WithinClause}, {FiltersDict}].
+    Within = case WithinClause of
+		 {D, W} -> {D, W};
+		 D when is_integer(D) -> {D, sliding};
+		 nil -> {nil}					 
+	     end,
+    [{Name}, {Select}, From, {Where}, Within, {FiltersDict}].
 
 
 get_events(Events)->
@@ -191,7 +203,15 @@ replace_filter_aliases(Event, Predicates) ->
 
 replace_filter_alias(Event, {nil,Param}) ->
     {Event,Param};
-replace_filter_alias(Event, {Alias, Param}) when Alias /= integer andalso Alias /= float andalso Alias /= string ->
+replace_filter_alias(Event, {atom,Param}) ->
+    {atom,Param};
+replace_filter_alias(Event, {integer,Param}) ->
+    {integer,Param};
+replace_filter_alias(Event, {float,Param}) ->
+    {float,Param};
+replace_filter_alias(Event, {string,Param}) ->
+    {string,Param};
+replace_filter_alias(Event, {Alias, Param}) -> %%when Alias /= integer andalso Alias /= float andalso Alias /= string ->
     {Event,Param};
 replace_filter_alias(Event, Predicate) ->
     Predicate.
@@ -215,19 +235,20 @@ replace_select_aliases(Tuples, FromTuples) when is_list(Tuples) ->
 		      case E1 of
 			  integer -> {integer,E2};
 			  float -> {float,E2};
+			  atom -> {atom, E2};
 			  nil -> case length(FromTuples) == 1 of
 				     true -> {element(2,hd(FromTuples)), E2} ;
 				     _ -> erlang:error({error, missing_event_qualifier})
 				 end;
 			  _ -> {_, Event} = lists:keyfind(E1, 1, lists:flatten(FromTuples)),
 			       {Event, E2}
-		      end;
+		      end;		 
 		 ({EventParam}) ->
 		      case length(FromTuples) of
 			  1 -> {element(1,hd(FromTuples)), EventParam};
 			  _ -> erlang:error({error, missing_event_qualifier})
 		      end;
-		 (nil) -> erlang:error({error, missing_event_qualifier});
+		 (nil) -> erlang:error({error, missing_event_qualifier});		
 		 (Atom) when is_atom(Atom) -> Atom
 	      end,
 	      Tuples).
@@ -241,6 +262,7 @@ replace_where_aliases({E1, E2}, FromTuples) ->
     case E1 of
 	integer -> {integer, E2};
 	float -> {float, E2};
+	atom -> {atom, E2};
 	_ ->  {_, Event} = lists:keyfind(E1,1, lists:flatten(FromTuples)),
 	      {Event, E2}
 	%% TODO: the case when there is no event aliases

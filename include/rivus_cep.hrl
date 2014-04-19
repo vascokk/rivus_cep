@@ -55,7 +55,9 @@
 	  event_win_pid,
 	  fsm_win_pid,
 	  query_plan = #query_plan{},
-	  stream_filters
+	  stream_filters,
+	  window_type,
+	  batch_clock_pid
 	 }).
 
 -record(query_ast,{

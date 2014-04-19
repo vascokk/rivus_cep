@@ -35,7 +35,7 @@
 	 is_last/2]).
 
 
-analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_WithinClause}, {_Filters}]) ->
+analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_Within, _WindowType}, {_Filters}]) ->
     case FromClause of
 	{pattern, {Pattern}} -> CNF =  to_cnf(WhereClause),    
 				PL =  predicates_to_list(CNF),
@@ -228,7 +228,10 @@ get_join_keys(Side, {EventName, Value}, {L,R, Acc}) ->
     case Side of
 	left -> {true, R, NewAcc};
 	right -> {L, true, NewAcc}
-    end.
+    end;
+get_join_keys(_, nil, _) ->
+    {false, false, []}.
+
 
 is_first(G, StateName) ->
     hd(digraph_utils:topsort(G)) == StateName.
