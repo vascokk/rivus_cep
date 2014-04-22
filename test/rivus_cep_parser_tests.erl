@@ -202,6 +202,7 @@ parse_query_filter_batch_aggr_test()->
     ?assertEqual({ok,[{aggr_query},
     		      {[{event1,eventparam1},{event2,eventparam2},{sum, {event2, eventparam3}}]},
 		        {[event1,event2]},{nil},{5, batch},
-		      { orddict:from_list([{event1,[{eq,{event1,eventparam2},{atom,b}}]},						  					   {event2,[{eq,{event2,eventparam2},{atom,b}}]}])}
+		      { orddict:from_list([{event1,[{eq,{event1,eventparam2},{atom,b}}]},
+					   {event2,[{eq,{event2,eventparam2},{atom,b}}]}])}
 		     ]},
     		 rivus_cep_parser:parse(Tokens)).
