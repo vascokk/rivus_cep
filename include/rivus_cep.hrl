@@ -25,7 +25,8 @@
 
 -record(query_plan, {
 	  join_keys = orddict:new(),
-	  fsm
+	  fsm,
+	  has_aggregations = false
 	 }).
 
 -record(query_details, {
