@@ -1,5 +1,5 @@
 %%------------------------------------------------------------------------------
-%% Copyright (c) 2013 Vasil Kolarov
+%% Copyright (c) 2013-2014 Vasil Kolarov
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -63,72 +63,33 @@ init(QD) ->
 		      query_plan = Plan,
 		      window_type = WindowType }}.
 
-
-get_result(#query_state{events=Events, win_register=WinReg, query_ast = Ast, window = Window}) when Window == global ->
-    WhereClause = Ast#query_ast.where,
-    SelectClause = Ast#query_ast.select,
-
-    PreResultSet = rivus_cep_window:get_pre_result(global, WinReg, Events),
-			   
-    lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
-    
-    CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], PreResultSet),
-    
-    lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
-			   
-    FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(WhereClause, ResRecord) ],
-    
-    lager:debug("---> Filtered Result: ~p", [FilteredRes]),
-
-    ResultSet = [list_to_tuple(build_select_clause(SelectClause, ResRecord,  [])) || ResRecord <-FilteredRes],
-
-    lager:debug("---> ResultSet: ~p", [ResultSet]),
-    
-    case ResultSet of
-    	[] -> nil;
-    	_ -> FirstRec = hd(ResultSet),
-	     Key = rivus_cep_aggregation:get_group_key(FirstRec),
-	     %%naive check for aggregations in the select clause:
-	     Result = case length(tuple_to_list(FirstRec)) == length(tuple_to_list(Key)) of
-			  true -> ResultSet; %% no aggregations in the 'select' stmt
-			  false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
-		      end,
-	     lager:debug("---> Result: ~p <-----", [Result]),
-	     Result
-    end;
-get_result(#query_state{events=Events, window = Window, query_ast = Ast, event_win_pid = Pid}) when Window /= global->
-    
-    PreResultSet = rivus_cep_window:get_pre_result(Pid, local, Window, Events),
+ 
+get_result(#query_state{events=Events, window = Window, query_ast = Ast} = QueryState) -> 
+    PreResultSet = case Window of
+		       global ->  rivus_cep_window:get_pre_result(global, QueryState#query_state.win_register, Events);
+		       _  ->  rivus_cep_window:get_pre_result(QueryState#query_state.event_win_pid, local, Window, Events)
+		   end,
  
     lager:debug("---> Pre-Result Set: ~p", [PreResultSet]),
-
     CartesianRes = lists:foldl(fun(Xs, A) -> [[X|Xs1] || X <- Xs, Xs1 <- A] end, [[]], PreResultSet),
-
     lager:debug("---> Result Set Cartesian: ~p", [CartesianRes]),
-
     WhereClause = Ast#query_ast.where,
-    SelectClause = Ast#query_ast.select,
-    
-    FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(WhereClause, ResRecord) ],
-    
+    SelectClause = Ast#query_ast.select,    
+    FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(WhereClause, ResRecord) ],   
     lager:debug("---> Filtered Result: ~p", [FilteredRes]),
+    ResultSet = [list_to_tuple(build_result_set(SelectClause, ResRecord,  [])) || ResRecord <-FilteredRes],
+    lager:debug("---> ResultSet: ~p", [ResultSet]),    
+    eval_result_set(ResultSet, QueryState#query_state.query_plan#query_plan.has_aggregations, QueryState).
 
-    ResultSet = [list_to_tuple(build_select_clause(SelectClause, ResRecord,  [])) || ResRecord <-FilteredRes],
-
-    lager:debug("---> ResultSet: ~p", [ResultSet]),
-    
-    case ResultSet of
-    	[] -> nil;
-    	_ -> FirstRec = hd(ResultSet),
-	     Key = rivus_cep_aggregation:get_group_key(FirstRec),
-	     %%naive check for aggregations in the select clause:
-	     Result = case length(tuple_to_list(FirstRec)) == length(tuple_to_list(Key)) of
-			  true -> ResultSet; %% no aggregations in the 'select' stmt
-			  false -> rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state())
-		      end,
-	     lager:debug("---> Result: ~p <-----", [Result]),
-	     Result	     
-    end.
+eval_result_set([], _, _) ->
+    nil;
+eval_result_set(ResultSet, false, QueryState) ->
+    lager:debug("---> Result: ~p <-----", [ResultSet]),
+    ResultSet; 
+eval_result_set(ResultSet, true, QueryState) ->
+    Result =  rivus_cep_aggregation:eval_resultset(test_stmt, ResultSet, rivus_cep_aggregation:new_state()),
+    lager:debug("---> Result: ~p <-----", [Result]),
+    Result.	         
 
 %% evaluate predicates on a given edge to allow transition to the state "EventName"
 eval_fsm_predicates(Fsm, EventName, Event, State) ->
@@ -137,7 +98,7 @@ eval_fsm_predicates(Fsm, EventName, Event, State) ->
     case Predicates of
 	[] -> true; %% no predicates on this edge => can do transition
 	_ -> SinglePredicate = rivus_cep_query_planner:to_single_predicate(Predicates),
-	    Events = rivus_cep_query_planner:get_events_on_path(G, EventName),
+	     Events = rivus_cep_query_planner:get_events_on_path(G, EventName),
 	     eval_fsm_predicates(Fsm, Event, SinglePredicate, Events, State)    
     end.
 
@@ -180,7 +141,7 @@ eval_fsm_result(Fsm, EventName, #query_state{query_ast = Ast, event_win_pid = Pi
     FilteredRes = [ResRecord || ResRecord <- CartesianRes, where_eval(Predicates, ResRecord) ],    
     lager:debug("---> Filtered Result: ~p", [FilteredRes]),
 
-    ResultSet = [list_to_tuple(build_select_clause(SelectClause, ResRecord,  [])) || ResRecord <-FilteredRes],
+    ResultSet = [list_to_tuple(build_result_set(SelectClause, ResRecord,  [])) || ResRecord <-FilteredRes],
 
     lager:debug("---> ResultSet: ~p", [ResultSet]),
     
@@ -248,9 +209,9 @@ select_eval({max,MaxTuple}, ResRecord) ->
 select_eval({Op,Left,Right}, ResRecord) ->
      {Op,{select_eval(Left, ResRecord)},select_eval(Right, ResRecord)}.
 
-build_select_clause([H|T], EventList, Acc) ->
-     build_select_clause(T, EventList, Acc ++ [select_eval(H, EventList)]);
-build_select_clause([], _, Acc) ->
+build_result_set([H|T], EventList, Acc) ->
+     build_result_set(T, EventList, Acc ++ [select_eval(H, EventList)]);
+build_result_set([], _, Acc) ->
      Acc.
        
 is_initial_state(EventName, State) ->
@@ -262,18 +223,17 @@ create_new_fsm(EventName, Event, #query_state{fsm_window = FsmWindow, event_win_
 		  fsm_events = rivus_cep_window:new(EvWinPid, slide, State#query_state.query_ast#query_ast.within)},
     rivus_cep_window:update(EvWinPid, NewFsm#fsm.fsm_events, Event),
     rivus_cep_window:update(FsmWinPid, FsmWindow, NewFsm),
-    %%State.
     [].
 
-%%  select all FSM's from the Reservoir/sliding window (NB: there are 2 windows - for events and for FSM's)
+%% eval_fsm() evaluates the FSM state, using the following algorithm: 
+%%  select all FSM's from the Reservoir/sliding window. (NB: there are 2 windows - one for events and one for FSM states)
 %%  for each FSM in the fsm_window:
-%% 1 - check if the next state is "EventName" and edge predicates on the current path eval to true
+%% 1 - check if the next state is <EventName> and edge predicates on the current path evaluate to true
 %% 2 - if (1)==true update the event window, goto(3) else END
 %% 3 - check if the new state is the last FSM state
 %% 4 - if (3)==true evaluate WHERE predicates and generate resultset (evaluate SELECT clause)
 %% 4.1 - remove the FSM (i.e. it reached the final state) else do nothing. END.
-%% 5 - if (3)==false (not the last state) - update the FSM state to "EventName"
-
+%% 5 - if (3)==false (not the last state) - update the FSM state to <EventName>
 eval_fsm(EventName, Event, #query_state{event_win_pid = EvWinPid, fsm_win_pid = FsmWinPid} = State) ->    
     FsmWindow = State#query_state.fsm_window,
     Fsms = rivus_cep_window:get_fsms(FsmWinPid, FsmWindow),
@@ -304,23 +264,17 @@ eval_fsm_state(EventName, FsmKey, Fsm,  #query_state{fsm_win_pid = FsmWinPid} = 
 reset_fsm() ->
     todo.
 
-process_event(Event, #query_state{query_type = QueryType, window = Window, event_win_pid=Pid, window_type=WindowType} = State) when QueryType == simple andalso  WindowType == batch->
-    lager:debug("rivus_cep_query:process_event, query_type: simple,  Event: ~p",[Event]),
-    case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
-    	true-> case Window of
-		   global -> ok;
-		   _ -> rivus_cep_window:update(Pid, Window, Event)		
-	       end;
-    	false -> []
-    end;
-process_event(Event, #query_state{query_type = QueryType, window = Window, event_win_pid=Pid} = State) when QueryType == simple->
+process_event(Event, #query_state{query_type = QueryType, window = Window, event_win_pid=Pid, window_type=WindowType} = State) when QueryType == simple ->  
     lager:debug("rivus_cep_query:process_event, query_type: simple,  Event: ~p",[Event]),
     case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
     	true-> case Window of
 		   global -> ok;
 		   _ -> rivus_cep_window:update(Pid, Window, Event)		
 	       end,
-	       get_result(State);
+	       case WindowType of
+		   batch -> ok;
+		       _ ->  get_result(State) %% TODO: should be 'sliding -> get_result(State)'
+		   end;
     	false -> []
     end;
 process_event(Event, #query_state{query_type = QueryType} = State) when QueryType == pattern ->
@@ -329,8 +283,7 @@ process_event(Event, #query_state{query_type = QueryType} = State) when QueryTyp
     case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
      	true -> case is_initial_state(EventName, State) of
 		    false -> eval_fsm(EventName, Event, State);
-		    true -> create_new_fsm(EventName, Event, State),
-			    []
+		    true -> create_new_fsm(EventName, Event, State)			    
 		end;
      	false -> []
     end.

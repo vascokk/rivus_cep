@@ -1,5 +1,5 @@
 %%------------------------------------------------------------------------------
-%% Copyright (c) 2013 Vasil Kolarov
+%% Copyright (c) 2013-2014 Vasil Kolarov
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -83,16 +83,7 @@ handle_info(Event, #query_state{query_type = QueryType} = State) ->
 	[] -> [];
 	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
     end,
-    {noreply, State};    
-%% handle_info(timeout, #query_state{window_type=WindowType}=State) when WindowType == batch->
-%%     lager:debug("Statement: ~p,  handle_info got event: timeout. Will do nothingproduce result ...~n",[]),
-%%     Timeout = State#query_state.query_ast#query_ast.within,
-%%     Result = rivus_cep_query:get_result(State),
-%%     case Result of
-%%     	[] -> [];
-%%     	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
-%%     end,    
-%%     {noreply, State, Timeout};   
+    {noreply, State};      
 handle_info(Info, State) ->
     lager:debug("Statement: ~p,  handle_info got event: ~p. Will do nothing ...",[ State#query_state.query_name ,Info]),
     {noreply, State}.

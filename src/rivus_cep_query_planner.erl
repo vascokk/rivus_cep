@@ -1,6 +1,6 @@
 %% ; -*- mode: Erlang;-*-
 %%------------------------------------------------------------------------------
-%% Copyright (c) 2013 Vasil Kolarov
+%% Copyright (c) 2013-2014 Vasil Kolarov
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -35,14 +35,14 @@
 	 is_last/2]).
 
 
-analyze( [{_QueryName}, {_SelectClause}, FromClause, {WhereClause}, {_Within, _WindowType}, {_Filters}]) ->
+analyze( [{_QueryName}, {SelectClause}, FromClause, {WhereClause}, {_Within, _WindowType}, {_Filters}]) ->
     case FromClause of
 	{pattern, {Pattern}} -> CNF =  to_cnf(WhereClause),    
 				PL =  predicates_to_list(CNF),
 				PV =  get_predicate_variables(PL),
 				G =  pattern_to_graph(PV, Pattern),				
 				#query_plan{fsm = G};
-	{_EventsList} -> #query_plan{join_keys = get_join_keys(WhereClause)}
+	{_EventsList} -> #query_plan{join_keys = get_join_keys(WhereClause), has_aggregations = is_aggregation_query(SelectClause)}
     end.
 
 sort_predicates(WhereClause) ->
@@ -233,13 +233,44 @@ get_join_keys(_, nil, _) ->
     {false, false, []}.
 
 
+%% {[{event1,eventparam1},
+%% 	{sum,{event2,eventparam2}},
+%% 	{minus,{plus,{plus,{plus,{event1,eventparam1},
+%% 			    {mult,{event2,eventparam2},{integer,5}}},
+%% 		      {integer,6}},
+%% 		{event2,eventparam4}},
+%% 	 {event1,eventparam1}},
+%% 	{count,{event2,eventparam3}}]}
+is_aggregation_query(sum) ->
+    true;
+is_aggregation_query(count) ->
+    true;
+is_aggregation_query(min) ->
+    tru;
+is_aggregation_query(max) ->
+    true;
+is_aggregation_query({L,R}) ->
+    is_aggregation_query(L) or is_aggregation_query(R);    
+is_aggregation_query({Op,L,R}) ->
+    is_aggregation_query(Op) or is_aggregation_query(L) or is_aggregation_query(R);    
+is_aggregation_query([H|[]]) ->
+    is_aggregation_query(H);	    
+is_aggregation_query([H|L]) ->
+    is_aggregation_query(H) or is_aggregation_query(L);
+is_aggregation_query(_) ->
+    false.
+
+  
+
 is_first(G, StateName) ->
     hd(digraph_utils:topsort(G)) == StateName.
+
 is_next(G, CurrentState, StateName) ->
    case digraph:get_path(G, CurrentState, StateName) of
        false -> false;
-       _ -> true
+           _ -> true
    end.
+
 is_last(G, StateName) ->
     lists:last(digraph_utils:topsort(G)) == StateName.
 
