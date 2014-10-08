@@ -42,7 +42,12 @@ analyze( [{_QueryName}, {SelectClause}, FromClause, {WhereClause}, {_Within, _Wi
 				PV =  get_predicate_variables(PL),
 				G =  pattern_to_graph(PV, Pattern),				
 				#query_plan{fsm = G};
-	{_EventsList} -> #query_plan{join_keys = get_join_keys(WhereClause), has_aggregations = is_aggregation_query(SelectClause)}
+	{_EventsList} -> JoinKeys = get_join_keys(WhereClause),
+			 FastAggr = case JoinKeys of
+					[] -> true;
+					 _ -> false
+				    end,
+			 #query_plan{join_keys = JoinKeys, has_aggregations = is_aggregation_query(SelectClause), fast_aggregations = FastAggr}
     end.
 
 sort_predicates(WhereClause) ->

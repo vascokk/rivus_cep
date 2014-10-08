@@ -20,7 +20,7 @@
 
 -export([new/2,
 	 resize/3,
-	 trim/1,
+	 trim/2,
 	 update/3,
 	 get_values/2,
 	 get_fsms/2,
@@ -28,6 +28,7 @@
 	 delete_fsm/3,
 	 get_window/2,
 	 get_result/4,
+	 get_aggr_state/3,
 	 initialize/1]).
 
 -include("rivus_cep.hrl").
@@ -77,6 +78,16 @@ get_result(local, Window, Events, _MD) ->
 get_result(global, WinReg, Events, _MD) ->
     QueryHandlers = lists:map(fun(Event) ->  create_qh_shared_window(Event, WinReg) end, Events),    
     [qlc:e(QH) || QH <- QueryHandlers ].
+
+get_aggr_state(local, Window, _MD) ->
+    {Reservoir, Oldest} =  get_window(Window, []),
+    MatchSpecs = [ets:fun2ms(fun({ {Time,'_'},Value}) when Time >= Oldest -> Value end)],
+    QueryHandlers = [create_qh(MS, Reservoir) || MS <- MatchSpecs],
+    [qlc:e(QH) || QH <- QueryHandlers ].
+
+trim(Window, _MD) ->
+    Reservoir = Window#slide.reservoir,
+    ets:delete_all_objects(Reservoir).
 
 trim(Window) ->
     Size = Window#slide.window,

@@ -26,7 +26,8 @@
 -record(query_plan, {
 	  join_keys = orddict:new(),
 	  fsm,
-	  has_aggregations = false
+	  has_aggregations = false,
+	  fast_aggregations = false
 	 }).
 
 -record(query_details, {
@@ -52,9 +53,9 @@
 	  query_ast,
 	  window,
 	  fsm_window, 
-	  win_register,
-	  event_win_pid,
-	  fsm_win_pid,
+	  global_window_register,
+	  window_pid,
+	  fsm_window_pid,
 	  query_plan = #query_plan{},
 	  stream_filters,
 	  window_type,

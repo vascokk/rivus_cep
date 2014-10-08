@@ -57,9 +57,17 @@ handle_call(_Request, _From, State) ->
     Reply = {ok, notsupported} ,
     {reply, Reply, State}.
 
-handle_cast(generate_result, State) ->
+handle_cast(generate_result, #query_state{query_plan = QP} = State) when not QP#query_plan.fast_aggregations->
     lager:debug("Statement: ~p,  handle_cast got event: generate_result. ~n",[State#query_state.query_name]),
-    Result = rivus_cep_query:get_result(State),
+    Result = rivus_cep_query:get_result_set(State),
+    case Result of
+    	[] -> [];
+    	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]
+    end,    
+    {noreply, State};
+handle_cast(generate_result,  #query_state{query_plan = QP} = State) when QP#query_plan.fast_aggregations->
+    lager:debug("Statement: ~p,  handle_cast got event: generate_result FASTAGGR. ~n",[State#query_state.query_name]),
+    Result = rivus_cep_query:get_fast_aggr_result_set(State),
     case Result of
     	[] -> [];
     	_ -> [gproc:send({p, l, {Subscriber, result_subscribers}}, Result) || Subscriber<-State#query_state.subscribers]

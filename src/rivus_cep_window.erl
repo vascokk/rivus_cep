@@ -30,6 +30,8 @@
          update/3,
 	 resize/2,
 	 resize/3,
+	 trim/1,
+	 trim/2,
 	 get_values/1,
          get_values/2,
 	 get_window/1,
@@ -40,7 +42,8 @@
 	 start_link/1,
 	 start_link/2,
 	 get_pre_result/3,
-	 get_pre_result/4]).
+	 get_pre_result/4,
+	 get_aggr_state/3]).
 
 -record(state,{provider, window, size, mod_details}).
 
@@ -87,6 +90,10 @@ update(Window, Value) ->
 update(Pid, Window, Value) ->
     gen_server:call(Pid, {update, Window, Value}).
 
+trim(Window)->
+     gen_server:call(?SERVER, {trim, Window}).
+trim(Pid, Window)->
+     gen_server:call(Pid, {trim, Window}).
 
 get_values(Window) ->
     gen_server:call(?SERVER, {get_value, Window}).
@@ -120,6 +127,10 @@ get_pre_result(Pid, local, Window, Events) ->
 
 get_pre_result(global, WinReg, Events) ->
     gen_server:call(?SERVER, {get_result, global, WinReg, Events}).
+
+get_aggr_state(Pid, local, Window) ->
+    gen_server:call(Pid, {get_aggr_state, local, Window}).
+
     
 handle_cast(_Msg, State) -> 
     {noreply, State}.
@@ -157,6 +168,12 @@ handle_call({get_result, local, Window, Events}, _From, #state{provider=Mod, mod
     {reply, Res, State};
 handle_call({get_result, global, WinReg, Events}, _From, #state{provider=Mod, mod_details = MD} = State) ->
     Res = Mod:get_result(global, WinReg, Events, MD),
+    {reply, Res, State};
+handle_call({get_aggr_state, local, Window}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:get_aggr_state(local, Window, MD),
+    {reply, Res, State};
+handle_call({trim, Window}, _From, #state{provider=Mod, mod_details = MD} = State) ->
+    Res = Mod:trim(Window, MD),
     {reply, Res, State}.
 
 handle_info(timeout, State=#state{window = Window, provider=Mod, mod_details = MD, size=Size}) ->

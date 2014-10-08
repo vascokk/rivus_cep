@@ -27,19 +27,18 @@ query_worker_test_() ->
        fun load_query_1/0},
       {"Test query with aggregation",
        fun load_query_2/0},
-      {"Tes query on event sequence (event pattern matching)",
+      {"Test query on event sequence (event pattern matching)",
        fun load_pattern/0},
-      {"Tes query without producers",
+      {"Test query without producers",
        fun load_query_no_producers/0},
-      {"Tes stream filters",
+      {"Test stream filters",
        fun stream_filter_1/0},
-      {"Tes stream filters",
+      {"Test stream filters",
        fun stream_filter_2/0},
-      {"Tes batch window query",
-       {timeout, 30, fun batch_window_query/0}},
-      {"Tes batch window aggregation query with stream filters",
-       {timeout, 30, fun  batch_window_aggregation_query/0}}
-
+      {"Test batch window query",
+       {timeout, 30, fun batch_window_query/0}} ,
+      {"Test batch window aggregation query with stream filters",
+       {timeout, 30, fun  batch_window_aggregation_query/0}}      
      ]
     }.
 
@@ -127,8 +126,9 @@ load_query_2() ->
     rivus_cep:notify(test_query_2, Event4),
     rivus_cep:notify(test_query_2, Event5),
     rivus_cep:notify(test_query_2, Event6),
-
+ 
     timer:sleep(2000),
+
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
@@ -390,7 +390,7 @@ batch_window_query() ->
     {ok,ok} = gen_server:call(Pid, get_result),
     %%?assertEqual(0, length(Values1)),
 
-    timer:sleep(2000),
+    timer:sleep(4000),
     
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
@@ -407,8 +407,8 @@ batch_window_aggregation_query() ->
     {ok, Pid} = result_subscriber:start_link(),
     
     QueryStr = "define aggr_query as
-                  select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
-                  from event1(eventparam2=b) as ev1, event2(eventparam2=b) as ev2
+                  select ev1.eventparam1, ev1.eventparam2, sum(ev1.eventparam3) 
+                  from event1(eventparam2=b) as ev1
                     within 5 seconds batch; ",
     
     {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, [test_query_2], [Pid], []),
@@ -416,10 +416,10 @@ batch_window_aggregation_query() ->
     %% send some events
     Event1 = {event1, gr1,b,10}, 
     Event2 = {event1, gr2,bbb,20},
-    Event3 = {event1, gr3,b,30},
-    Event4 = {event2, gr1,b,40,d},
-    Event5 = {event2, gr2,bb,50,dd},
-    Event6 = {event2, gr3,b,40,d},
+    Event3 = {event1, gr1,b,30},
+    Event4 = {event1, gr1,b,40,d},
+    Event5 = {event1, gr2,bb,50,dd},
+    Event6 = {event1, gr3,b,40,d},
 
     rivus_cep:notify(test_query_2, Event1),
     rivus_cep:notify(test_query_2, Event2),
@@ -434,11 +434,11 @@ batch_window_aggregation_query() ->
 
     timer:sleep(5000),
     {ok,Values} = gen_server:call(Pid, get_result),
-    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
     ?assertEqual(2, length(Values)),
     ?assert(lists:any(fun(T) -> T == {gr1,b,80} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {gr3,b,80} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {gr3,b,40} end, Values)),
 
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).

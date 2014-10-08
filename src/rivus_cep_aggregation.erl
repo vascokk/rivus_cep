@@ -16,36 +16,60 @@
 
 -module(rivus_cep_aggregation).
 
--export([eval_resultset/3, get_group_key/1, new_state/0]).
+-export([eval_resultset/4, get_group_key/2, new_state/0, eval_resultset_fast_aggr/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("rivus_cep.hrl").
 
-eval_resultset(Stmt, [H|T], #res_eval_state{recno = RecNo, result = CurrentRes} = State) ->
-    Key = get_group_key(H),
-    {ResultRecord, NewState} = eval_result_record(Stmt, H, Key, State#res_eval_state{aggrno = 1}),
-    NewRes = dict:store(Key, ResultRecord, CurrentRes),
-    eval_resultset(Stmt, T, NewState#res_eval_state{recno=RecNo+1, result = NewRes});
-eval_resultset(_, [], State) ->
-    [Value || {_, Value} <- dict:to_list(State#res_eval_state.result)].
+eval_resultset_fast_aggr(QueryState) ->
+    Window = QueryState#query_state.window,
+    Pid = QueryState#query_state.window_pid,
+    [[AggrState]] = rivus_cep_window:get_aggr_state(Pid, local, Window),
+    [Value || {_, Value} <- dict:to_list(AggrState#res_eval_state.result)].
 
-eval_result_record(Stmt, ResultRecord, Key, _State) ->
-    Nodes = tuple_to_list(ResultRecord),
-    %%?debugMsg(io_lib:format("Nodes: ~p~n",[Nodes])),
-    {ResNodes, NewState} = lists:mapfoldl(fun(Node, State) -> eval_node(Stmt, Node, Key, State) end, _State, Nodes),
+eval_resultset(_, [], AggrState, #query_state{query_plan =QP}) when not QP#query_plan.fast_aggregations  ->
+    [Value || {_, Value} <- dict:to_list(AggrState#res_eval_state.result)];
+eval_resultset(_, [], AggrState, #query_state{query_plan =QP} = QueryState) when QP#query_plan.fast_aggregations ->
+    Window = QueryState#query_state.window,
+    Pid = QueryState#query_state.window_pid,
+    rivus_cep_window:trim(Pid, Window),
+    rivus_cep_window:update(Pid, Window, AggrState),
+    [Value || {_, Value} <- dict:to_list(AggrState#res_eval_state.result)];
+eval_resultset(Stmt, [H|T], #res_eval_state{recno = RecNo, result = CurrentRes} = AggrState, QueryState) ->
+    SelectClause = QueryState#query_state.query_ast#query_ast.select,
+    Key = get_group_key(H, SelectClause),
+    {ResultRecord, NewAggrState} = eval_result_record(Stmt, H, Key, SelectClause, AggrState#res_eval_state{aggrno = 1}),
+    NewRes = dict:store(Key, ResultRecord, CurrentRes),
+    %%?debugMsg(io_lib:format("----->NewRes: ~p~n",[NewRes])),
+    eval_resultset(Stmt, T, NewAggrState#res_eval_state{recno=RecNo+1, result = NewRes}, QueryState).
+
+
+eval_result_record(Stmt, ResultRecord, Key, SelectClause, State) when is_tuple(ResultRecord)->
+    eval_result_record(Stmt, [ResultRecord], Key, SelectClause, State);
+eval_result_record(Stmt, ResultRecord, Key, SelectClause, State) -> 
+    {ResNodes, NewState} = lists:mapfoldl(fun({EventName, EventParam}, Acc) when is_atom(EventName) andalso is_atom(EventParam) ->
+						  Event = lists:keyfind(EventName, 1, ResultRecord),
+						  ParamValue = (EventName):get_param_by_name(Event, EventParam),
+						  {ParamValue, Acc};
+					     ({Op, Left, Right}, Acc) -> eval_node(Stmt, {Op,Left,Right}, Key, ResultRecord, Acc);					  	 (Node, Acc) when is_tuple(Node) -> eval_node(Stmt, Node, Key, ResultRecord, Acc);
+					     (Node, Acc) -> {Node, Acc}
+					  end, State, SelectClause),		     
+   
     {list_to_tuple(ResNodes), NewState}.
 
 	    
-eval_node(Stmt, Node, Key, State) ->
+eval_node(Stmt, Node, Key, ResultRecord, State) ->
     case Node of
+	{EventName, EventParam} when is_atom(EventName) andalso is_atom(EventParam) ->
+	    Event = lists:keyfind(EventName, 1, ResultRecord),
+	    {(EventName):get_param_by_name(Event, EventParam), State};
 	Value when not is_tuple(Value) andalso not is_list(Value) -> {Value, State};
 	{Value} when not is_tuple(Value) andalso not is_list(Value) -> {Value, State};
-	{param, Value} -> {Value, State};
-	{Op, LeftNode, RightNode} -> {LeftValue, NewState1} = eval_node(Stmt, LeftNode, Key, State),
-				     {RightValue, NewState2} =  eval_node(Stmt, RightNode, Key, NewState1),
-				     {eval_operation(Op, LeftValue, RightValue), NewState2};
-	{Aggr, Param} -> {Value, NewState} = eval_node(Stmt, Param, Key, State),
-			 eval_aggregation(Aggr, Stmt, Value, Key, NewState)
+	{Op, LeftNode, RightNode} -> {LeftValue, NewState1} = eval_node(Stmt, LeftNode, Key, ResultRecord, State),
+				     {RightValue, NewState2} =  eval_node(Stmt, RightNode, Key, ResultRecord, NewState1),
+				     {eval_op({Op, LeftValue, RightValue}, ResultRecord), NewState2}; %%!!!!!
+	{Aggr, Param} when is_tuple(Param)-> {Value, NewState} = eval_node(Stmt, Param, Key, ResultRecord, State),
+					    eval_aggregation(Aggr, Stmt, Value, Key, NewState)
     end.
 
 eval_aggregation(sum, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = AggrNodes} = State) ->
@@ -69,50 +93,53 @@ eval_aggregation(max, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_no
 						       end, Value,  AggrNodes),
     {orddict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}}.
 
-eval_operation(plus, Left, Right) ->	    
-    Left + Right;
-eval_operation(minus, Left, Right) ->	    
-    Left - Right;
-eval_operation(mult, Left, Right) ->	    
-    Left * Right;
-eval_operation('div', Left, Right) ->	    
-    Left / Right.
-
-get_group_key(T) when is_tuple(T)->
-    L = tuple_to_list(T),
-    Keys = lists:foldl(fun(Value, Acc) when not is_tuple(Value) andalso not is_list(Value) -> Acc ++ [Value];
-			  ({Value}, Acc) when not is_tuple(Value) andalso not is_list(Value) -> Acc ++ [Value];
-			  ({param, Value}, Acc) -> Acc ++ [Value];
-			  ({Op, Left, Right}, Acc) -> Acc ++ eval_key(Op,Left,Right);
-			  (_, Acc) -> Acc
-		       end, [], L),
+get_group_key(Event, SelectClause) when is_tuple(Event)->
+    Keys = lists:foldl(fun({EventName, EventParam}, Acc) when is_atom(EventName) andalso is_atom(EventParam) -> 		    
+			       ParamValue = (EventName):get_param_by_name(Event, EventParam),
+			       Acc ++ [ParamValue];
+			  ({Op, Left, Right}, Acc) -> Acc ++ lists:flatten([eval_op({Op, Left, Right}, Event)]);
+			  (_, Acc) -> Acc 
+		       end, [], SelectClause),		     
+    list_to_tuple(Keys);
+get_group_key(ResultRecord, SelectClause) when is_list(ResultRecord) ->
+    Keys = lists:foldl(fun({EventName, EventParam}, Acc) when is_atom(EventName) andalso is_atom(EventParam) ->
+			       Event = lists:keyfind(EventName, 1, ResultRecord),
+			       ParamValue = (EventName):get_param_by_name(Event, EventParam),
+			       Acc ++ [ParamValue];
+			  ({Op, Left, Right}, Acc) -> Acc ++ lists:flatten([eval_op({Op, Left, Right}, ResultRecord)]);
+			  (_, Acc) -> Acc 
+		       end, [], SelectClause),		     
     list_to_tuple(Keys).
 
-eval_key(Op, Left, Right) ->
-    L = eval_key(Left),
-    R = eval_key(Right),
-    case L /= [] andalso R /= [] of 
-	true -> case Op of
-		    plus -> [L + R];
-		    minus -> [L - R];
-		    mult -> [L * R];
-		    'div' -> [L/R]
-		end;
-	false ->[]
-    end.
 
-eval_key({param, Value}) ->
+eval_op({EventName,ParamName}, ResultRecord) when is_atom(EventName) andalso is_atom(ParamName) andalso is_list(ResultRecord)->
+    Event = lists:keyfind(EventName, 1, ResultRecord),
+    EventName:get_param_by_name(Event, ParamName);
+eval_op({EventName,ParamName}, Event) when is_atom(EventName) andalso is_atom(ParamName)->
+    EventName:get_param_by_name(Event, ParamName);
+eval_op({integer, Value}, _) ->
+     Value;
+eval_op({float, Value}, _) ->
     Value;
-eval_key({sum, _}) ->
+eval_op({atom, Value}, _) ->
+    Value;
+eval_op({_,T}, _) when is_tuple(T)-> %this is an aggregation operation
     [];
-eval_key({count, _}) ->
-    [];
-eval_key({min, _}) ->
-    [];
-eval_key({max, _}) ->
-    [];
-eval_key({avg, _}) ->
-    [].
+eval_op({Op,Left,Right}, ResultRecord) when Left=/=[] andalso Right=/=[]->
+    L = eval_op(Left, ResultRecord),
+    R = eval_op(Right, ResultRecord),
+    case L=/=[] andalso R=/=[] of
+	true ->  case Op of
+		      plus -> L + R;
+		      minus -> L - R;
+		      mult -> L * R;
+		      'div' -> L / R;
+		      _ -> undefined_op
+		 end;
+	false -> []
+    end;
+eval_op({_,_,_}, _) ->
+    [blah].
 
 new_state() ->
     #res_eval_state{}.
