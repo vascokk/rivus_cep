@@ -20,6 +20,7 @@
 
 -export([new/2,
 	 resize/3,
+	 trim/1,
 	 trim/2,
 	 update/3,
 	 get_values/2,
