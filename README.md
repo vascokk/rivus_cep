@@ -130,6 +130,7 @@ See `tests/rivus_cep_tests.erl` for more examples.
 
 #Events representation
 
+Events are tuples in the format: `{<name>, <attribute 1>, <attribute 2>,.....,<attribute N>}`. The `<name>` must be unique.
 For each event type there must be a module implementing the `event_behavior` with the same name as the one used in the "from" clause. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
 
 
