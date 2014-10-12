@@ -9,8 +9,8 @@ In the CEP-based systems the events(data) are processed as they arrive, as oppos
 
                                |------CEP Engine------| 
                                |                      | 
-DataSource ------------------->|  Continuous Query    |-------------> Result Subscriber /Consumer/
-/Provider/     Event stream    | over a time interval |   Result
+DataSource ------------------->|  Continuous Query    |-------------> Result Subscriber 
+/Provider/     Event stream    | over a time interval |   Result         /Consumer/
                                |----------------------|
               
 </pre>
