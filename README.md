@@ -31,7 +31,7 @@ within 60 seconds
 ```
 
 The above query will join all the events of type `event1` and `event2` arrived whithin the last 60 seconds ("sliding window").
-In case of "join" queries, the events within the time window will be persisted in memory. For queries thad do not require "join" - the result will be calculated immediately, wihout events persistence. 
+In case of "join" queries, the events within the time window will be persisted in memory. For queries that do not require "join" - the result will be calculated immediately, wihout events persistence. 
 
 - pattern matching queries: 
 
