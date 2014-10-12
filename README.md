@@ -3,7 +3,7 @@
 # Overview
 
 Rivus CEP is an Erlang application for Complex Event Processing. It uses a declarative SQL-like DSL to define operations over event streams.
-In the CEP-based systems the data (events) are processed as they arrive, as opposite to the DB, where data is being first persisted, then fetched and processed:
+In the CEP-based systems the events(data) are processed as they arrive, as opposite to the DB, where data is first persisted, then fetched and processed:
 
 <pre>
 
@@ -130,7 +130,7 @@ See `tests/rivus_cep_tests.erl` for more examples.
 
 ##Events representation
 
-For each event type there must be a module implementing the `event_behavior` with the same name used in the "from" clause. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
+For each event type there must be a module implementing the `event_behavior` with the same name as the one used in the "from" clause. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
 
 
 #Streaming events via TCP
