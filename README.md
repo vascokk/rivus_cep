@@ -75,7 +75,8 @@ where
 within 60 seconds
 ```
 
-Multiple criteria separated by `','` could be used. The above query will filter out all the `event1` events where `eventparam1>5 AND eventparam1<30` and also the `event2`, where `eventparam1<50`. The difference netween the filters and `where` clause criteria is that the filters are executed before the event to be persisted in memory. In this way the user can reduce the event volume in Result calculations.
+Multiple criteria separated by `','` could be used. The above query will filter out all the `event1` events, which do not satisfy the condition `eventparam1>5 AND eventparam1<30` and also the `event2` for which `eventparam1<50` is not true.
+The difference netween the filters and `where` clause criteria is that the filters are executed before the event to be persisted in memory. In this way the user can reduce the event volume in Result calculations.
 
 #Aggregations
 
