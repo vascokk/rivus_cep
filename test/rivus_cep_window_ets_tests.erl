@@ -14,7 +14,7 @@
 %%% limitations under the License.
 %%%
 
--module(rivus_cep_slide_tests).
+-module(rivus_cep_window_ets_tests).
 -include_lib("eunit/include/eunit.hrl").
 -include("rivus_cep.hrl").
 -include_lib("../deps/folsom/include/folsom.hrl").
@@ -45,7 +45,7 @@ slide_test_() ->
      ]}.
 
 create() ->
-    Window = rivus_cep_slide:new(?SIZE, []),    
+    Window = rivus_cep_window_ets:new(?SIZE, []),
     ?assert(is_pid(Window#slide.server)),
     ?assertEqual(?SIZE, Window#slide.window),
     ?assertEqual(0, ets:info(Window#slide.reservoir, size)).
@@ -54,13 +54,13 @@ slide() ->
     %% don't want a trim to happen
     %% unless we call trim
     %% so kill the trim server process
-    Window = rivus_cep_slide:new(?SIZE, []),
+    Window = rivus_cep_window_ets:new(?SIZE, []),
     ok = folsom_sample_slide_server:stop(Window#slide.server),
     Moments = lists:seq(1, ?RUNTIME),
     %% pump in 90 seconds worth of readings
     Moment = lists:foldl(fun(_X, Tick) ->
                                  Tock = tick(Tick),
-                                 [rivus_cep_slide:update(Window, N, []) ||
+                                 [rivus_cep_window_ets:update(Window, N, []) ||
                                      N <- lists:duplicate(?READINGS, Tock)],
                                  Tock end,
                          0,
@@ -70,18 +70,18 @@ slide() ->
     %% get values only returns last ?WINDOW seconds
     ExpectedValues = lists:sort(lists:flatten([lists:duplicate(?READINGS, N) ||
                                                   N <- lists:seq(?RUNTIME - ?SIZE, ?RUNTIME)])),
-    Values = lists:sort(rivus_cep_slide:get_values(Window, [])),
+    Values = lists:sort(rivus_cep_window_ets:get_values(Window, [])),
     ?assertEqual(ExpectedValues, Values),
     %% trim the table
-    Trimmed = rivus_cep_slide:trim(Window),
+    Trimmed = rivus_cep_window_ets:trim(Window),
     ?assertEqual((?RUNTIME - ?SIZE - 1) * ?READINGS, Trimmed),
     check_table(Window, lists:seq(?RUNTIME - ?SIZE, ?RUNTIME)),
     %% increment the clock past the window
     tick(Moment, ?SIZE * 2),
     %% get values should be empty
-    ?assertEqual([], rivus_cep_slide:get_values(Window, [])),
+    ?assertEqual([], rivus_cep_window_ets:get_values(Window, [])),
     %% trim, and table should be empty
-    Trimmed2 = rivus_cep_slide:trim(Window),
+    Trimmed2 = rivus_cep_window_ets:trim(Window),
     ?assertEqual((?RUNTIME * ?READINGS) - ((?RUNTIME - ?SIZE - 1) * ?READINGS), Trimmed2),
     check_table(Window, []),
     ok.
@@ -89,12 +89,12 @@ slide() ->
 expand_window() ->
     %% create a new histogram
     %% will leave the trim server running, as resize() needs it
-    Window = rivus_cep_slide:new(?SIZE, []),
+    Window = rivus_cep_window_ets:new(?SIZE, []),
     Moments = lists:seq(1, ?RUNTIME ),
     %% pump in 90 seconds worth of readings
     Moment = lists:foldl(fun(_X, Tick) ->
                                  Tock = tick(Tick),
-                                 [rivus_cep_slide:update(Window, N, []) ||
+                                 [rivus_cep_window_ets:update(Window, N, []) ||
                                      N <- lists:duplicate(?READINGS, Tock)],
                                  Tock end,
                          0,
@@ -105,28 +105,28 @@ expand_window() ->
     %% get values only returns last ?WINDOW seconds
     ExpectedValues = lists:sort(lists:flatten([lists:duplicate(?READINGS, N) ||
                                                   N <- lists:seq(?RUNTIME - ?SIZE, ?RUNTIME)])),
-    Values = lists:sort(rivus_cep_slide:get_values(Window, [])),
+    Values = lists:sort(rivus_cep_window_ets:get_values(Window, [])),
     ?assertEqual(ExpectedValues, Values),
 
     %%expand the sliding window
-    NewWindow = rivus_cep_slide:resize(Window, ?DOUBLE_SIZE, []),
+    NewWindow = rivus_cep_window_ets:resize(Window, ?DOUBLE_SIZE, []),
 
     %% get values only returns last ?WINDOW*2 seconds
     NewExpectedValues = lists:sort(lists:flatten([lists:duplicate(?READINGS, N) ||
                                                   N <- lists:seq(?RUNTIME - ?DOUBLE_SIZE, ?RUNTIME)])),
-    NewValues = lists:sort(rivus_cep_slide:get_values(NewWindow, [])),
+    NewValues = lists:sort(rivus_cep_window_ets:get_values(NewWindow, [])),
     ?assertEqual(NewExpectedValues, NewValues),
         
     %% trim the table
-    Trimmed = rivus_cep_slide:trim(NewWindow),
+    Trimmed = rivus_cep_window_ets:trim(NewWindow),
     ?assertEqual((?RUNTIME - ?DOUBLE_SIZE - 1) * ?READINGS, Trimmed),
     check_table(NewWindow, lists:seq(?RUNTIME - ?DOUBLE_SIZE, ?RUNTIME)),
     %% increment the clock past the window
     tick(Moment, ?DOUBLE_SIZE*2),
     %% get values should be empty
-    ?assertEqual([], rivus_cep_slide:get_values(NewWindow, [])),
+    ?assertEqual([], rivus_cep_window_ets:get_values(NewWindow, [])),
     %% trim, and table should be empty
-    Trimmed2 = rivus_cep_slide:trim(NewWindow),
+    Trimmed2 = rivus_cep_window_ets:trim(NewWindow),
     ?assertEqual((?RUNTIME * ?READINGS) - ((?RUNTIME - ?DOUBLE_SIZE - 1) * ?READINGS), Trimmed2),
     check_table(NewWindow, []),
     ok.
@@ -136,12 +136,12 @@ expand_window() ->
 shrink_window() ->
     %% create a new histogram
     %% will leave the trim server running, as resize() needs it
-    Window = rivus_cep_slide:new(?DOUBLE_SIZE, []),
+    Window = rivus_cep_window_ets:new(?DOUBLE_SIZE, []),
     Moments = lists:seq(1, ?RUNTIME ),
     %% pump in 90 seconds worth of readings
     Moment = lists:foldl(fun(_X, Tick) ->
                                  Tock = tick(Tick),
-                                 [rivus_cep_slide:update(Window, N, []) ||
+                                 [rivus_cep_window_ets:update(Window, N, []) ||
                                      N <- lists:duplicate(?READINGS, Tock)],
                                  Tock end,
                          0,
@@ -152,29 +152,29 @@ shrink_window() ->
     %% get values only returns last ?DOUBLE_WINDOW seconds
     ExpectedValues = lists:sort(lists:flatten([lists:duplicate(?READINGS, N) ||
                                                   N <- lists:seq(?RUNTIME - ?DOUBLE_SIZE, ?RUNTIME)])),
-    Values = lists:sort(rivus_cep_slide:get_values(Window, [])),
+    Values = lists:sort(rivus_cep_window_ets:get_values(Window, [])),
     ?assertEqual(ExpectedValues, Values),
 
     %%shrink the sliding window
-    NewWindow = rivus_cep_slide:resize(Window, ?SIZE, []),
+    NewWindow = rivus_cep_window_ets:resize(Window, ?SIZE, []),
 
     %% get values only returns last ?SIZE seconds
     NewExpectedValues = lists:sort(lists:flatten([lists:duplicate(?READINGS, N) ||
                                                   N <- lists:seq(?RUNTIME - ?SIZE, ?RUNTIME)])),
-    NewValues = lists:sort(rivus_cep_slide:get_values(NewWindow, [])),
+    NewValues = lists:sort(rivus_cep_window_ets:get_values(NewWindow, [])),
     ?assertEqual(NewExpectedValues, NewValues),
     
     
     %% trim the table
-    Trimmed = rivus_cep_slide:trim(NewWindow),
+    Trimmed = rivus_cep_window_ets:trim(NewWindow),
     ?assertEqual((?RUNTIME - ?SIZE - 1) * ?READINGS, Trimmed),
     check_table(NewWindow, lists:seq(?RUNTIME - ?SIZE, ?RUNTIME)),
     %% increment the clock past the window
     tick(Moment, ?SIZE*2),
     %% get values should be empty
-    ?assertEqual([], rivus_cep_slide:get_values(NewWindow, [])),
+    ?assertEqual([], rivus_cep_window_ets:get_values(NewWindow, [])),
     %% trim, and table should be empty
-    Trimmed2 = rivus_cep_slide:trim(NewWindow),
+    Trimmed2 = rivus_cep_window_ets:trim(NewWindow),
     ?assertEqual((?RUNTIME * ?READINGS) - ((?RUNTIME - ?SIZE - 1) * ?READINGS), Trimmed2),
     check_table(NewWindow, []),
     ok.

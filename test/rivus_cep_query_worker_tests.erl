@@ -13,7 +13,7 @@ query_worker_test_() ->
 	     lager:start(),
 	     application:start(gproc),
 	     lager:set_loglevel(lager_console_backend, debug),
-	     application:set_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+	     application:set_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
 	     ok = application:start(rivus_cep)
      end,
      fun (_) ->
@@ -40,7 +40,7 @@ query_1() ->
                      from event1 as ev1, event2 as ev2
                      where ev1.eventparam2 = ev2.eventparam2
                      within 60 seconds; ",
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),        
     
     Window = rivus_cep_window:new(Pid, slide, 60),
@@ -89,7 +89,7 @@ query_2()->
                    where ev1.eventparam2 = ev2.eventparam2
                     within 60 seconds; ",
 
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),        
     
     Window = rivus_cep_window:new(Pid, slide, 60),
@@ -141,7 +141,7 @@ pattern() ->
                       from event1 as ev1 -> event2 as ev2
                       where ev1.eventparam2 = ev2.eventparam2
                       within 60 seconds; ",
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid1} = rivus_cep_window:start_link(Mod),        
     {ok, Pid2} = rivus_cep_window:start_link(Mod),        
     

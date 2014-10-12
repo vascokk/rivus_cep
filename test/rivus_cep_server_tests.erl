@@ -13,7 +13,7 @@ query_worker_test_() ->
       lager:start(),
       application:start(gproc),
       lager:set_loglevel(lager_console_backend, debug),
-      application:set_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+      application:set_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
       application:set_env(rivus_cep, rivus_tcp_serv, {"127.0.0.1", 5775}),
       ok = application:start(rivus_cep)
     end,

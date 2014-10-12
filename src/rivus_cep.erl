@@ -177,7 +177,7 @@ parse_query(QueryStr) ->
   QueryClauses.
 
 register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, WithinClause, {_Filters}], Options, WinReg) ->
-  Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
+  Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets), %%TODO: to be passed as parameter to the func
   %%{ok, EvWinPid} = rivus_cep_window:start_link(Mod),
 
   {QueryType, Events} = case FromClause of
@@ -219,7 +219,7 @@ maybe_update_window_size(Event, WinReg, {Within, _WindowsType}) ->
 
 
 create_new_global_window(Event, WinReg, {Within, _WindowType}) ->
-  %% Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide), %%TODO: to be passed as parameter to the func
+  %% Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets), %%TODO: to be passed as parameter to the func
   %% {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
   Window = rivus_cep_window:new(slide, Within),
   dict:store(Event, Window, WinReg).

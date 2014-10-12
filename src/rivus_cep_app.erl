@@ -30,7 +30,7 @@ stop() ->
 start(_StartType, _StartArgs) ->
     case rivus_cep_sup:start_link() of
 	{ok, Pid} ->
-	    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+	    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
 	    {ok, _} = rivus_cep_window:start_link(Mod, global), %% TODO supervisor
       {Ip, Port } = application:get_env(rivus_cep, rivus_tcp_serv, {"127.0.0.1", 5775}),
       {ok, _} = rivus_cep_tcp_listener_sup:start_link(Ip, Port),

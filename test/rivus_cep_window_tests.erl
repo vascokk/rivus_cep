@@ -18,7 +18,7 @@ window_test_() ->
 	     application:start(gproc),
 	     lager:set_loglevel(lager_console_backend, debug),	     
 	     meck:new(folsom_utils),
-	     application:set_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+	     application:set_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
 	     ok = application:start(rivus_cep),
 	     tick(0, 0)
      end,
@@ -47,7 +47,7 @@ window_test_() ->
     }.
 
 new() ->
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),        
     Window = rivus_cep_window:new(Pid, slide, 2),
     tick(0,0),
@@ -58,7 +58,7 @@ new() ->
     ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Pid, Window)).
 
 new_sliding() ->   
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),        
     Window = rivus_cep_window:new(Pid, slide, 2), %% 2 seconds sliding-window
     tick(0,0),
@@ -72,7 +72,7 @@ new_sliding() ->
 
 
 select_using_qlc() ->
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),            
     Window = rivus_cep_window:new(Pid, slide, 60),
     tick(0,0),
@@ -98,7 +98,7 @@ select_using_qlc() ->
     ?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
 
 select_where_op_equal() ->
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),            
     Window = rivus_cep_window:new(Pid, slide, 60),
     rivus_cep_window:update(Pid, Window, {event1, a,b,c}),
@@ -121,7 +121,7 @@ select_where_op_equal() ->
     ?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
 
 select_count() ->
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),            
     Window = rivus_cep_window:new(Pid, slide, 60),
     rivus_cep_window:update(Pid, Window, {event1, a,b,c}),
@@ -140,7 +140,7 @@ select_count() ->
     ?assertEqual(5, Count ).
 
 select_count_where_op_equal() ->
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),            
     Window = rivus_cep_window:new(Pid, slide, 60),
     rivus_cep_window:update(Pid, Window, {event1, a,b,c}),
@@ -169,7 +169,7 @@ select_count_where_op_equal() ->
     
 
 select_sum_where_op_equal() ->
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),            
     Window = rivus_cep_window:new(Pid, slide, 60),
     rivus_cep_window:update(Pid, Window, {event1, 10,b,c}), % *
@@ -204,7 +204,7 @@ create_from_qh(MatchSpec, Reservoir) ->
      ets:table(Reservoir, [{traverse, {select, MatchSpec}}]).
 
 dynamic_qh() ->
-    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_slide),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
     {ok, Pid} = rivus_cep_window:start_link(Mod),       
     Window = rivus_cep_window:new(Pid, slide, 60),
     rivus_cep_window:update(Pid, Window, {event1, 10,b,c}), % *

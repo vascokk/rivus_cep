@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%------------------------------------------------------------------------------
 
--module(rivus_cep_slide).
+-module(rivus_cep_window_ets).
 
 -compile([{parse_transform, lager_transform}]).
 
