@@ -167,7 +167,11 @@ load_pattern() ->
     
     {ok,Values} = gen_server:call(Pid, get_result),
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
-    ?assertEqual([{10,b,100,20},{20,b,100,20}], Values),
+
+    ?assertEqual(2, length(Values)),
+    ?assert(lists:any(fun(T) -> T == {10,b,100,20} end, Values)),
+    ?assert(lists:any(fun(T) -> T == {20,b,100,20} end, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 

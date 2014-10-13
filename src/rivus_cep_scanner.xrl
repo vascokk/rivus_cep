@@ -48,9 +48,9 @@ Rules.
 <>		:	{token,{'<>',TokenLine}}.
 ->		:	{token,{'->',TokenLine}}.
 
-[]()[}{|!?/;:,.*+#<>=-] :
+[]()[}{|!?/:,.*+#<>=-] :
 			{token,{list_to_atom(TokenChars),TokenLine}}.
-\;{WS}		:	{end_token,{semicolon,TokenLine}}.
+\;		:	{end_token,{semicolon,TokenLine}}.
 {WS}+		:	skip_token.
 
 Erlang code.

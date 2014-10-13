@@ -2,7 +2,7 @@
 
 Header "%% Copyright (c)" "%% @Vasil Kolarov".
 
-Nonterminals declaration select_clause from_clause pattern where_clause within_clause filter filter_predicates filter_predicate name_clause name_params select_element event events alias event_param expression predicate predicates operand uminus function literal window_type. 
+Nonterminals declaration event_declaration query_declaration select_clause select_elements from_clause pattern where_clause within_clause filter filter_predicates filter_predicate name_clause name_params event events alias event_param expression predicate predicates operand uminus function literal window_type event_name event_attribute event_attributes.
 
 Terminals define as select from where within seconds and or not if foreach '(' ')' '+' '-' '*' '/' '<' '>' '=' '<=' '>=' '<>' ',' '->' atom integer float index of '.' var string char count sum min max avg sliding batch tumbling.
 
@@ -27,38 +27,47 @@ Unary 1400 'not'.
 
 uminus -> '-' expression.
 
-declaration -> define 
+declaration -> event_declaration : '$1'.
+declaration -> query_declaration : '$1'.
+
+event_declaration -> define name_clause as '(' event_attributes ')' : {'$2', '$5'}.
+
+event_attributes -> event_attribute: '$1'.
+event_attributes -> event_attribute ',' event_attributes: flatten(['$1', '$3']).
+
+event_attribute -> atom: value_of('$1').
+
+
+query_declaration -> define
 		   name_clause  as
-		   select
 		   select_clause
 		   from_clause
 		   where_clause
-		   within_clause : get_ast({'$2','$5','$6','$7','$8'}).
+		   within_clause : get_ast({'$2','$4','$5','$6','$7'}).
 
-declaration -> define 
+query_declaration -> define
 		   name_clause  as
-		   select
 		   select_clause
 		   from_clause
-		   where_clause : get_ast({'$2','$5','$6','$7',nil}).
+		   where_clause : get_ast({'$2','$4','$5','$6',nil}).
 
-declaration -> define 
+query_declaration -> define
 		   name_clause  as
-		   select
 		   select_clause
 		   from_clause
-		   within_clause : get_ast({'$2','$5','$6',nil,'$7'}).
+		   within_clause : get_ast({'$2','$4','$5',nil,'$6'}).
 
-declaration -> define 
+query_declaration -> define
 		   name_clause  as
-		   select
 		   select_clause
-		   from_clause: get_ast({'$2','$5','$6',nil,nil}).
+		   from_clause: get_ast({'$2','$4','$5',nil,nil}).
 
 name_clause -> atom: value_of('$1').
 
-select_clause -> expression: ['$1'].
-select_clause -> expression ',' select_clause: flatten(['$1', '$3']). 
+select_clause -> select select_elements: flatten(['$2']).
+
+select_elements -> expression: '$1'.
+select_elements -> expression ',' select_elements: flatten(['$1', '$3']).
 
 event_param ->  atom: {nil, value_of('$1')}.
 event_param -> alias '.' atom: {'$1', value_of('$3')}.
@@ -97,15 +106,16 @@ alias -> atom: value_of('$1').
 
 where_clause -> where predicates: '$2'.
 
+expression -> event_param: '$1'.
 expression -> expression '+' expression: {'plus','$1','$3'}.
 expression -> expression '-' expression: {'minus','$1','$3'}.
 expression -> expression '*' expression: {'mult','$1','$3'}.
 expression -> expression '/' expression: {'div','$1','$3'}.
 expression ->  '(' expression ')': '$2'.
 expression ->  function '(' expression ')': {type_of('$1'), '$3'}.
-expression -> event_param: '$1'.
 expression -> integer: {integer,value_of('$1')}.
 expression -> float: {float, value_of('$1')}.
+
 
 predicates -> predicates 'or' predicates:  {'or','$1','$3'}.
 predicates -> predicates 'and'  predicates:  {'and','$1','$3'}.
@@ -215,7 +225,6 @@ replace_filter_alias(Event, {Alias, Param}) -> %%when Alias /= integer andalso A
     {Event,Param};
 replace_filter_alias(Event, Predicate) ->
     Predicate.
-
 
 
 replace_select_aliases({nil, E2}, FromTuples) ->
