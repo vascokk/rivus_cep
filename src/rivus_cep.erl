@@ -20,6 +20,7 @@
 
 %% API
 -export([start_link/1,
+  execute/4,
   load_query/4,
   notify/1,
   notify/2,
@@ -48,6 +49,9 @@ start_link(Supervisor) ->
 
 load_query(QueryStr, Producers, Subscribers, Options) ->
   gen_server:call(?SERVER, {load_query, [QueryStr, Producers, Subscribers, Options]}).
+
+execute(QueryStr, Producers, Subscribers, Options) ->
+  gen_server:call(?SERVER, {execute, [QueryStr, Producers, Subscribers, Options]}).
 
 get_query_details(QueryStr, Producers, Subscribers, Options) ->
   gen_server:call(?SERVER, {get_query_details, [QueryStr, Producers, Subscribers, Options]}).
@@ -113,6 +117,19 @@ handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, S
 
   {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
   {reply, {ok, Pid, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}};
+handle_call({execute, [QueryStr, _Producers, Subscribers, Options]}, _From, State) ->
+
+  WinReg = State#state.win_register,
+  QuerySup = State#state.query_sup,
+
+  QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
+
+  case QueryDetails of
+    {module, _} -> {reply, ok, State};
+    _ -> lager:debug("Query sup, Args: ~p~n", [QueryDetails]),
+         {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
+         {reply, {ok, Pid, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}}
+  end;
 handle_call({get_query_details, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{win_register = WinReg} = State) ->
   QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
   {reply, {ok, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}};
@@ -152,24 +169,27 @@ code_change(_OldVsn, State, _Extra) ->
 get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg) ->
   QueryClauses = parse_query(QueryStr),
 
-  Producers = case _Producers of
-                [] -> [any];
-                _ -> _Producers
-              end,
+  case QueryClauses of
+    {event, EventDef} -> rivus_cep_event_creator:load_event_mod(EventDef);
+    _ -> Producers = case _Producers of
+                       [] -> [any];
+                       _ -> _Producers
+                     end,
 
-  {{EventWindow, EvWinPid}, {FsmWindow, FsmWinPid}, NewWinReg} = register_windows(QueryClauses, Options, WinReg),
+      {{EventWindow, EvWinPid}, {FsmWindow, FsmWinPid}, NewWinReg} = register_windows(QueryClauses, Options, WinReg),
 
-  #query_details{
-    clauses = QueryClauses,
-    producers = Producers,
-    subscribers = Subscribers,
-    options = Options,
-    event_window = EventWindow,
-    fsm_window = FsmWindow,
-    window_register = NewWinReg,
-    event_window_pid = EvWinPid,
-    fsm_window_pid = FsmWinPid
-  }.
+      #query_details{
+        clauses = QueryClauses,
+        producers = Producers,
+        subscribers = Subscribers,
+        options = Options,
+        event_window = EventWindow,
+        fsm_window = FsmWindow,
+        window_register = NewWinReg,
+        event_window_pid = EvWinPid,
+        fsm_window_pid = FsmWinPid
+      }
+  end.
 
 parse_query(QueryStr) ->
   {ok, Tokens, _} = rivus_cep_scanner:string(QueryStr, 1),

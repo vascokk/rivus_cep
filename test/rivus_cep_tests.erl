@@ -23,7 +23,9 @@ query_worker_test_() ->
 	     application:stop(rivus_cep)
      end,
 
-     [{"Test query without aggregations",
+     [{"Test runtime event declaration",
+       fun execute_1/0},
+      {"Test query without aggregations",
        fun load_query_1/0},
       {"Test query with aggregation",
        fun load_query_2/0},
@@ -447,3 +449,37 @@ batch_window_aggregation_query() ->
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
+execute_1() ->
+  {ok,Pid} = result_subscriber:start_link(),
+
+  EventStr = "define event11 as (attr1, attr2, attr3, attr4);",
+  QueryStr = "define correlation1 as
+                     select sum(ev1.attr1)
+                     from event11 as ev1
+                     within 60 seconds; ",
+
+  ok = rivus_cep:execute(EventStr, [], [], []),
+
+  {ok, QueryPid, _} = rivus_cep:execute(QueryStr, [test_query_1], [Pid], []),
+
+  Event1 = {event11, 10,b,c},
+  Event2 = {event11, 15,bbb,c},
+  Event3 = {event11, 20,b,c},
+  Event4 = {event11, 30,b,cc,d},
+  Event5 = {event11, 40,bb,cc,dd},
+
+  rivus_cep:notify(test_query_1, Event1),
+  rivus_cep:notify(test_query_1, Event2),
+  rivus_cep:notify(test_query_1, Event3),
+  rivus_cep:notify(test_query_1, Event4),
+  rivus_cep:notify(test_query_1, Event5),
+
+  timer:sleep(2000),
+
+  {ok,Values} = gen_server:call(Pid, get_result),
+  %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+  ?assertEqual(1, length(Values)),
+  ?assertEqual([{115}], Values),
+
+  gen_server:call(QueryPid,stop),
+  gen_server:call(Pid,stop).

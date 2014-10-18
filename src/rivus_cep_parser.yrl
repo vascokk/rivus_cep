@@ -27,7 +27,7 @@ Unary 1400 'not'.
 
 uminus -> '-' expression.
 
-declaration -> event_declaration : '$1'.
+declaration -> event_declaration : {event, '$1'}.
 declaration -> query_declaration : '$1'.
 
 event_declaration -> define name_clause as '(' event_attributes ')' : {'$2', '$5'}.

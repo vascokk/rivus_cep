@@ -608,7 +608,8 @@ yeccpars2_1(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccgoto_declaration(hd(Ss), Cat, Ss, Stack, T, Ts, Tzr).
 
 yeccpars2_2(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
- yeccgoto_declaration(hd(Ss), Cat, Ss, Stack, T, Ts, Tzr).
+ NewStack = yeccpars2_2_(Stack),
+ yeccgoto_declaration(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
 yeccpars2_3(_S, semicolon, _Ss, Stack, _T, _Ts, _Tzr) ->
  {ok, hd(Stack)};
@@ -1614,6 +1615,14 @@ yeccgoto_within_clause(48=_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_90(_S, Cat, Ss, Stack, T, Ts, Tzr);
 yeccgoto_within_clause(91=_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_124(_S, Cat, Ss, Stack, T, Ts, Tzr).
+
+-compile({inline,yeccpars2_2_/1}).
+-file("src/rivus_cep_parser.yrl", 26).
+yeccpars2_2_(__Stack0) ->
+ [__1 | __Stack] = __Stack0,
+ [begin
+   { event , __1 }
+  end | __Stack].
 
 -compile({inline,yeccpars2_6_/1}).
 -file("src/rivus_cep_parser.yrl", 61).

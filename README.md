@@ -103,7 +103,7 @@ QueryStr = "define query1 as
 Producer = event_producer_1.
 {ok, SubscriberPid} = result_subscriber:start_link().
 
-{ok, QueryPid} = rivus_cep:load_query(QueryStr, [Producer], [SubscriberPid], [{shared_streams, true}]).
+{ok, QueryPid} = rivus_cep:execute(QueryStr, [Producer], [SubscriberPid], [{shared_streams, true}]).
     
 %% create some evetnts
 Event1 = {event1, gr1,b,10}.
@@ -119,7 +119,7 @@ rivus_cep:notify(Event2).
 	
 ```
 
-The query is started with `rivus_cep:load_query/4`. It takes as arguments: query string, list of event producers, list of query result subscribers and options as a proplist.
+The query is started with `rivus_cep:execute/4` (previously `load_query/4`, which is now deprecated). It takes as arguments: query string, list of event producers, list of query result subscribers and options as a proplist.
 
 Each query worker will register itself to the  [gproc](https://github.com/uwiger/gproc) process registry, for the events listed in the "from" clause.
 
@@ -132,14 +132,50 @@ See `tests/rivus_cep_tests.erl` for more examples.
 #Events representation
 
 Events are tuples in the format: `{<name>, <attribute 1>, <attribute 2>,.....,<attribute N>}`. The `<name>` must be unique.
-For each event type there must be a module implementing the `event_behavior` with the same name as the one used in the "from" clause. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
+For each event type there must be a module implementing the `event_behavior` with the same name as the name of the event. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
+You can define events in runtime, using the following statement:
 
+```
+define event <name> as (<attribute 1>, <attribute 2>,.....,<attribute N>);"
+```
+
+Here is an example:
+
+``` erlang
+  {ok,Pid} = result_subscriber:start_link(),
+
+  EventStr = "define event11 as (attr1, attr2, attr3, attr4);",
+  QueryStr = "define correlation1 as
+                     select sum(ev1.attr1)
+                     from event11 as ev1
+                     within 60 seconds; ",
+
+  ok = rivus_cep:execute(EventStr, [], [], []),
+
+  {ok, QueryPid, _} = rivus_cep:execute(QueryStr, [test_query_1], [Pid], []),
+
+  Event1 = {event11, 10,b,c},
+  Event2 = {event11, 15,bbb,c},
+  Event3 = {event11, 20,b,c},
+  Event4 = {event11, 30,b,cc,d},
+  Event5 = {event11, 40,bb,cc,dd},
+
+  rivus_cep:notify(test_query_1, Event1),
+  rivus_cep:notify(test_query_1, Event2),
+  rivus_cep:notify(test_query_1, Event3),
+  rivus_cep:notify(test_query_1, Event4),
+  rivus_cep:notify(test_query_1, Event5),
+
+  timer:sleep(2000),
+
+  {ok,Values} = gen_server:call(Pid, get_result)
+```
 
 #Streaming events via TCP
 
 You can stream events via TCP connection:
 
-```
+``` erlang
   {ok, {Host, Port}} = application:get_env(rivus_cep, rivus_tcp_serv),
   {ok, Socket} = gen_tcp:connect(Host, Port, [{active, false}, {nodelay, true}, {packet, 4}, binary]),
 
