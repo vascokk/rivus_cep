@@ -136,7 +136,7 @@ For each event type there must be a module implementing the `event_behavior` wit
 You can define events in runtime, using the following statement:
 
 ```
-define event <name> as (<attribute 1>, <attribute 2>,.....,<attribute N>);"
+define event <name> as (<attribute 1>, <attribute 2>,.....,<attribute N>);
 ```
 
 Here is an example:
