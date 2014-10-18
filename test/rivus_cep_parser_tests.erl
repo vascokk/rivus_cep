@@ -210,5 +210,5 @@ parse_query_filter_batch_aggr_test() ->
 parse_event_1_test() ->
   {ok, Tokens, _Endline} = rivus_cep_scanner:string("define event10 as (attr1, attr2, attr3);"),
 
-  ?assertEqual({ok, {event10, [attr1, attr2, attr3]}},
+  ?assertEqual({ok, {event, {event10, [attr1, attr2, attr3]}}},
     rivus_cep_parser:parse(Tokens)).
