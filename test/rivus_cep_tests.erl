@@ -97,9 +97,9 @@ load_query_1() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
-    
+    ?assert(lists:member({10,b,cc,b}, Values)),
+    ?assert(lists:member({20,b,cc,b}, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
     
@@ -135,8 +135,8 @@ load_query_2() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {gr1,b,80} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {gr3,b,80} end, Values)),
+    ?assert(lists:member({gr1,b,80} , Values)),
+    ?assert(lists:member({gr3,b,80}, Values)),
 
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
@@ -171,8 +171,8 @@ load_pattern() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
 
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {10,b,100,20} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,100,20} end, Values)),
+    ?assert(lists:member({10,b,100,20} , Values)),
+    ?assert(lists:member({20,b,100,20}, Values)),
 
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
@@ -207,9 +207,9 @@ load_query_no_producers() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
-    
+    ?assert(lists:member({10,b,cc,b}, Values)),
+    ?assert(lists:member({20,b,cc,b}, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -242,9 +242,9 @@ shared_streams_1() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{10,b,50,b},{20,b,50,b}], Values),
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {10,b,50,b} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,50,b} end, Values)),
-    
+    ?assert(lists:member({10,b,50,b}, Values)),
+    ?assert(lists:member({20,b,50,b}, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -279,11 +279,11 @@ shared_streams_2() ->
     %%result will includes the events generated in the previous test 
     %%?assertEqual([{20,b,130},{10,b,130},{gr1,b,130},{gr3,b,130}], Values),
     ?assertEqual(4, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,130} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {10,b,130} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {gr1,b,130} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {gr3,b,130} end, Values)),
-	    
+    ?assert(lists:member({20,b,130}, Values)),
+    ?assert(lists:member({10,b,130}, Values)),
+    ?assert(lists:member({gr1,b,130}, Values)),
+    ?assert(lists:member({gr3,b,130}, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -313,12 +313,12 @@ stream_filter_1() ->
     timer:sleep(2000),
     
     {ok,Values} = gen_server:call(Pid, get_result),
-    %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
+    %%?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     ?assertEqual(1, length(Values)),
-    ?assertNot(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
-    
+    ?assertNot(lists:member({10,b,cc,b}, Values)),
+    ?assert(lists:member({20,b,cc,b}, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -362,9 +362,9 @@ stream_filter_2() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
-    
+    ?assert(lists:member({10,b,cc,b}, Values)),
+    ?assert(lists:member({20,b,cc,b}, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -402,9 +402,9 @@ batch_window_query() ->
     %% ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{10,b,cc,b},{20,b,cc,b}], Values),
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {10,b,cc,b} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {20,b,cc,b} end, Values)),
-    
+    ?assert(lists:member({10,b,cc,b}, Values)),
+    ?assert(lists:member({20,b,cc,b}, Values)),
+
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).
 
@@ -443,8 +443,8 @@ batch_window_aggregation_query() ->
     ?debugMsg(io_lib:format("Values: ~p~n",[Values])),
     %%?assertEqual([{gr1,b,80},{gr3,b,80}], Values),
     ?assertEqual(2, length(Values)),
-    ?assert(lists:any(fun(T) -> T == {gr1,b,80} end, Values)),
-    ?assert(lists:any(fun(T) -> T == {gr3,b,40} end, Values)),
+    ?assert(lists:member({gr1,b,80}, Values)),
+    ?assert(lists:member({gr3,b,40}, Values)),
 
     gen_server:call(QueryPid,stop),
     gen_server:call(Pid,stop).

@@ -55,7 +55,13 @@ new() ->
     rivus_cep_window:update(Pid, Window, <<"event2">>),
     rivus_cep_window:update(Pid, Window, <<"event3">>),
     tick(0,1),
-    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Pid, Window)).
+    %%?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Pid, Window)).
+    Values = rivus_cep_window:get_values(Pid, Window),
+    ?assertEqual(3, length(Values)),
+    ?assert(lists:member(<<"event1">>, Values)),
+    ?assert(lists:member(<<"event2">>, Values)),
+    ?assert(lists:member(<<"event3">>, Values)).
+
 
 new_sliding() ->   
     Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
@@ -65,7 +71,13 @@ new_sliding() ->
     rivus_cep_window:update(Pid, Window, <<"event1">>),
     rivus_cep_window:update(Pid, Window, <<"event2">>),
     rivus_cep_window:update(Pid, Window, <<"event3">>),
-    ?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Pid, Window)),
+    %%?assertEqual([<<"event1">>, <<"event2">>,<<"event3">>],rivus_cep_window:get_values(Pid, Window)),
+    Values = rivus_cep_window:get_values(Pid, Window),
+    ?assertEqual(3, length(Values)),
+    ?assert(lists:member(<<"event1">>, Values)),
+    ?assert(lists:member(<<"event2">>, Values)),
+    ?assert(lists:member(<<"event3">>, Values)),
+
     %%timer:sleep(4000),
     tick(0, 5),
     ?assertEqual([],rivus_cep_window:get_values(Pid, Window)).
@@ -95,7 +107,13 @@ select_using_qlc() ->
     QH = qlc:q([ {X,Y} || X <- QH1, Y <- QH2, element(2,X) == element(2,Y)]),
     ResSet = lists:foldl(fun({X,Y}, Acc) -> sets:add_element(Y, sets:add_element(X,Acc)) end, sets:new(),  qlc:e(QH)),
     Res =  sets:to_list(ResSet),
-    ?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
+    %%?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
+    ?assertEqual(4, length(Res)),
+    ?assert(lists:member({event1, a,b,c}, Res)),
+    ?assert(lists:member({event1, a, bbb, c}, Res)),
+    ?assert(lists:member({event2, a,bb,cc,d}, Res)),
+    ?assert(lists:member({event2, a,bb,cc,dd}, Res)).
+
 
 select_where_op_equal() ->
     Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
@@ -118,7 +136,12 @@ select_where_op_equal() ->
     QH = qlc:q([ {X,Y} || X <- QH1, Y <- QH2, element(2,X) == element(2,Y)]),
     ResSet = lists:foldl(fun({X,Y}, Acc) -> sets:add_element(Y, sets:add_element(X,Acc)) end, sets:new(),  qlc:e(QH)),
     Res =  sets:to_list(ResSet),
-    ?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
+    %%?assertEqual([ {event1, a,b,c}, {event1, a, bbb, c}, {event2, a,bb,cc,d}, {event2, a,bb,cc,dd}], Res).
+    ?assertEqual(4, length(Res)),
+    ?assert(lists:member({event1, a,b,c}, Res)),
+    ?assert(lists:member({event1, a, bbb, c}, Res)),
+    ?assert(lists:member({event2, a,bb,cc,d}, Res)),
+    ?assert(lists:member({event2, a,bb,cc,dd}, Res)).
 
 select_count() ->
     Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets),
