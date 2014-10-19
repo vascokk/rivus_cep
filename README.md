@@ -211,6 +211,6 @@ Queries based on event pattern use only non-shared windows.
 
 There is a number of limitations/TODOs:
 
-- using event aliases is mandatory (too lazy to implement a check for event parameter name duplication :) ) ;
+- using event aliases is mandatory;
 - no benchmarks;
 - needs extensive testing.
