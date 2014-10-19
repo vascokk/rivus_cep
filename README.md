@@ -145,7 +145,7 @@ Here is an example:
   {ok,Pid} = result_subscriber:start_link(),
 
   EventDefStr = "define event11 as (attr1, attr2, attr3, attr4);",
-  QueryStr = "define correlation1 as
+  QueryStr = "define query1 as
                      select sum(ev1.attr1)
                      from event11 as ev1
                      within 60 seconds; ",
