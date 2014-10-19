@@ -279,6 +279,10 @@ replace_where_aliases({E1, E2}, FromTuples) ->
            end;
     _ -> {_, Event} = lists:keyfind(E1, 1, lists:flatten(FromTuples)),
                       {Event, E2}
+<<<<<<< HEAD
+=======
+  %% TODO: the case when there is no event aliases
+>>>>>>> 3c3553a16b4fe35bade90d95d3c18f8cae796924
   end.
 
 remove_from_aliases([H | T], Acc) when is_tuple(H) ->
