@@ -139,10 +139,6 @@ replace_where_aliases({E1, E2}, FromTuples) ->
            end;
     _ -> {_, Event} = lists:keyfind(E1, 1, lists:flatten(FromTuples)),
                       {Event, E2}
-<<<<<<< HEAD
-=======
-  %% TODO: the case when there is no event aliases
->>>>>>> 3c3553a16b4fe35bade90d95d3c18f8cae796924
   end.
 
 remove_from_aliases([H | T], Acc) when is_tuple(H) ->
@@ -354,11 +350,7 @@ yecctoken2string(Other) ->
 
 
 
-<<<<<<< HEAD
 -file("src/rivus_cep_parser.erl", 353).
-=======
--file("src/rivus_cep_parser.erl", 354).
->>>>>>> 3c3553a16b4fe35bade90d95d3c18f8cae796924
 
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_0(S, Cat, Ss, Stack, T, Ts, Tzr);
@@ -2263,8 +2255,4 @@ yeccpars2_124_(__Stack0) ->
   end | __Stack].
 
 
-<<<<<<< HEAD
 -file("src/rivus_cep_parser.yrl", 308).
-=======
--file("src/rivus_cep_parser.yrl", 309).
->>>>>>> 3c3553a16b4fe35bade90d95d3c18f8cae796924
