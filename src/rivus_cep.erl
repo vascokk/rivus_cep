@@ -20,6 +20,7 @@
 
 %% API
 -export([start_link/1,
+  execute/1,
   execute/4,
   load_query/4,
   notify/1,
@@ -49,6 +50,9 @@ start_link(Supervisor) ->
 
 load_query(QueryStr, Producers, Subscribers, Options) ->
   gen_server:call(?SERVER, {load_query, [QueryStr, Producers, Subscribers, Options]}).
+
+execute(QueryStr) ->
+  gen_server:call(?SERVER, {execute, [QueryStr, [], [], []]}).
 
 execute(QueryStr, Producers, Subscribers, Options) ->
   gen_server:call(?SERVER, {execute, [QueryStr, Producers, Subscribers, Options]}).

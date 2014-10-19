@@ -452,13 +452,14 @@ batch_window_aggregation_query() ->
 execute_1() ->
   {ok,Pid} = result_subscriber:start_link(),
 
-  EventStr = "define event11 as (attr1, attr2, attr3, attr4);",
+  EventDefStr = "define event11 as (attr1, attr2, attr3, attr4);",
+
   QueryStr = "define correlation1 as
                      select sum(ev1.attr1)
                      from event11 as ev1
                      within 60 seconds; ",
 
-  ok = rivus_cep:execute(EventStr, [], [], []),
+  ok = rivus_cep:execute(EventDefStr),
 
   {ok, QueryPid, _} = rivus_cep:execute(QueryStr, [test_query_1], [Pid], []),
 

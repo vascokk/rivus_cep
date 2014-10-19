@@ -133,7 +133,7 @@ See `tests/rivus_cep_tests.erl` for more examples.
 
 Events are tuples in the format: `{<name>, <attribute 1>, <attribute 2>,.....,<attribute N>}`. The `<name>` must be unique.
 For each event type there must be a module implementing the `event_behavior` with the same name as the name of the event. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
-You can define events in runtime, using the following statement:
+You can define events in runtime, using the following statement with `rivus_cep:execute/1`:
 
 ```
 define event <name> as (<attribute 1>, <attribute 2>,.....,<attribute N>);
@@ -144,13 +144,13 @@ Here is an example:
 ``` erlang
   {ok,Pid} = result_subscriber:start_link(),
 
-  EventStr = "define event11 as (attr1, attr2, attr3, attr4);",
+  EventDefStr = "define event11 as (attr1, attr2, attr3, attr4);",
   QueryStr = "define correlation1 as
                      select sum(ev1.attr1)
                      from event11 as ev1
                      within 60 seconds; ",
 
-  ok = rivus_cep:execute(EventStr, [], [], []),
+  ok = rivus_cep:execute(EventDefStr),
 
   {ok, QueryPid, _} = rivus_cep:execute(QueryStr, [test_query_1], [Pid], []),
 
