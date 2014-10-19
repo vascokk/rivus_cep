@@ -15,10 +15,10 @@
 
 parse_query_1_test() ->
   {ok, Tokens, _Endline} = rivus_cep_scanner:string("define correlation1 as
-                                                         select eventparam
+                                                         select eventparam1
                                                          from event1; ", 1),
   ?assertEqual({ok, [{correlation1},
-    {[{event1, eventparam}]}, {[event1]}, {nil}, {nil}, {[]}]},
+    {[{event1, eventparam1}]}, {[event1]}, {nil}, {nil}, {[]}]},
     rivus_cep_parser:parse(Tokens)).
 
 parse_query_2_test() ->
@@ -26,7 +26,7 @@ parse_query_2_test() ->
                                                          select eventparam1, eventparam2
                                                          from event1, event2; ", 1),
 
-  ?assertError({error, missing_event_qualifier}, rivus_cep_parser:parse(Tokens)).
+  ?assertError({badmatch,ubiquitous_event_param}, rivus_cep_parser:parse(Tokens)).
 
 parse_query_3_test() ->
   {ok, Tokens, _Endline} = rivus_cep_scanner:string("define correlation1 as
@@ -212,3 +212,48 @@ parse_event_1_test() ->
 
   ?assertEqual({ok, {event, {event10, [attr1, attr2, attr3]}}},
     rivus_cep_parser:parse(Tokens)).
+
+parse_query_no_alias_test() ->
+  {ok, Tokens, _Endline} = rivus_cep_scanner:string("define query1 as
+                                                         select eventparam1, attr2
+                                                         from event1, event4
+                                                         where eventparam1 = 20
+                                                         within 60 seconds; ", 1),
+
+  ?assertEqual({ok, [{query1},
+    {[{event1, eventparam1}, {event4,attr2}]},
+    {[event1, event4]},
+    {{eq, {event1, eventparam1}, {integer, 20}}},
+    {60, sliding}, {[]}]},
+    rivus_cep_parser:parse(Tokens)).
+
+parse_query_no_alias_ubiquitous_1_test() ->
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string("define query1 as
+                                                         select eventparam1, eventparam2
+                                                         from event1, event2
+                                                         where eventparam1 = 20
+                                                         within 60 seconds; ", 1),
+     ?assertError({badmatch,ubiquitous_event_param}, rivus_cep_parser:parse(Tokens)).
+
+parse_query_no_alias_2_test() ->
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string("define query1 as
+                                                         select attr1, attr11
+                                                         from event4, event5
+                                                         where attr1 = 20
+                                                         within 60 seconds; ", 1),
+
+    ?assertEqual({ok, [{query1},
+        {[{event4, attr1}, {event5,attr11}]},
+        {[event4, event5]},
+        {{eq, {event4, attr1}, {integer, 20}}},
+        {60, sliding}, {[]}]},
+        rivus_cep_parser:parse(Tokens)).
+
+parse_query_no_alias_ubiquitous_2_test() ->
+    {ok, Tokens, _Endline} = rivus_cep_scanner:string("define query1 as
+                                                         select attr1, attr11
+                                                         from event4, event5
+                                                         where attr4 = 20
+                                                         within 60 seconds; ", 1),
+    ?assertError({badmatch,ubiquitous_event_param}, rivus_cep_parser:parse(Tokens)).
+

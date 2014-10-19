@@ -15,5 +15,6 @@ create_event_1_test() ->
   ?assertEqual(a, event10:get_param_by_name(Event, attr1)),
   ?assertEqual(b, event10:get_param_by_name(Event, attr2)),
   ?assertEqual(c, event10:get_param_by_name(Event, attr3)),
-  ?assertError({case_clause,attr4}, event10:get_param_by_name(Event, attr4)).
+  ?assertError({case_clause,attr4}, event10:get_param_by_name(Event, attr4)),
+  ?assertEqual([attr1, attr2, attr3], event10:get_param_names()).
 
