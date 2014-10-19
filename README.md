@@ -207,10 +207,3 @@ Queries based on event pattern use only non-shared windows.
 - [folsom](https://github.com/boundary/folsom)
 - [lager](https://github.com/basho/lager) 
 
-###Current limitations
-
-There is a number of limitations/TODOs:
-
-- using event aliases is mandatory;
-- no benchmarks;
-- needs extensive testing.
