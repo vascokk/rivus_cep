@@ -121,5 +121,11 @@ process_event(Provider, Event) ->
 
 load_query(Query, Socket) ->
   {QueryStr, Providers, UpdateListners, Options} = Query,
-  {ok, QueryPid, _} = rivus_cep:load_query(QueryStr, Providers, UpdateListners, Options),
-  ok = gen_tcp:send(Socket, term_to_binary(QueryPid)).
+
+  case rivus_cep:execute(QueryStr, Providers, UpdateListners, Options) of
+      {ok, QueryPid, _} -> ok = gen_tcp:send(Socket, term_to_binary(QueryPid));
+      ok -> ok = gen_tcp:send(Socket, term_to_binary(ok));
+      _ -> lager:error("Cannot execute statement:: ~p",[Query]),
+          ok = gen_tcp:send(Socket, term_to_binary({error,cannot_execute_query}))
+  end.
+

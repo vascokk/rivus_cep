@@ -130,7 +130,7 @@ handle_call({execute, [QueryStr, _Producers, Subscribers, Options]}, _From, Stat
 
   case QueryDetails of
     {module, _} -> {reply, ok, State};
-    _ -> lager:debug("Query sup, Args: ~p~n", [QueryDetails]),
+    _ -> lager:info("Query sup, Args: ~p~n", [QueryDetails]),
          {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
          {reply, {ok, Pid, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}}
   end;
@@ -171,29 +171,29 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%--------------------------------------------------------------------
 get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg) ->
-  QueryClauses = parse_query(QueryStr),
+    QueryClauses = parse_query(QueryStr),
 
-  case QueryClauses of
-    {event, EventDef} -> rivus_cep_event_creator:load_event_mod(EventDef);
-    _ -> Producers = case _Producers of
-                       [] -> [any];
-                       _ -> _Producers
-                     end,
+    case QueryClauses of
+        {event, EventDef} -> rivus_cep_event_creator:load_event_mod(EventDef);
+        _ -> Producers = case _Producers of
+                             [] -> [any];
+                             _ -> _Producers
+                         end,
 
-      {{EventWindow, EvWinPid}, {FsmWindow, FsmWinPid}, NewWinReg} = register_windows(QueryClauses, Options, WinReg),
+            {{EventWindow, EvWinPid}, {FsmWindow, FsmWinPid}, NewWinReg} = register_windows(QueryClauses, Options, WinReg),
 
-      #query_details{
-        clauses = QueryClauses,
-        producers = Producers,
-        subscribers = Subscribers,
-        options = Options,
-        event_window = EventWindow,
-        fsm_window = FsmWindow,
-        window_register = NewWinReg,
-        event_window_pid = EvWinPid,
-        fsm_window_pid = FsmWinPid
-      }
-  end.
+            #query_details{
+                clauses          = QueryClauses,
+                producers        = Producers,
+                subscribers      = Subscribers,
+                options          = Options,
+                event_window     = EventWindow,
+                fsm_window       = FsmWindow,
+                window_register  = NewWinReg,
+                event_window_pid = EvWinPid,
+                fsm_window_pid   = FsmWinPid
+            }
+    end.
 
 parse_query(QueryStr) ->
   {ok, Tokens, _} = rivus_cep_scanner:string(QueryStr, 1),

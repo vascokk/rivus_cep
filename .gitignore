@@ -22,3 +22,5 @@ etc/*.erl
 out
 data
 data/*
+.rebar
+_rel

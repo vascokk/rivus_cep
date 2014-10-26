@@ -23,10 +23,16 @@ query_worker_test_() ->
       application:stop(gproc),
       application:stop(rivus_cep)
     end,
-
-    [{"Test query via TCP connection",
-      timeout, 60*60,
-      fun load_query_tcp/0}
+    [
+%%     {"Test query via TCP connection",
+%%         timeout, 60*60,
+%%         fun load_query_tcp/0},
+%%      {"Test event module load via TCP connection",
+%%       timeout, 60*60,
+%%       fun load_event_tcp/0},
+        {"Test query and event module load via TCP connection",
+            timeout, 60*60,
+            fun load_query_and_event/0}
     ]
   }.
 
@@ -71,6 +77,64 @@ load_query_tcp() ->
 
   gen_server:call(QueryPid, stop),
   gen_server:call(Pid, stop).
-    
+
+load_event_tcp() ->
+    EventDefStr = "define event11 as (attr1, attr2, attr3, attr4);",
+    {ok, {Host, Port}} = application:get_env(rivus_cep, rivus_tcp_serv),
+    {ok, Socket} = gen_tcp:connect(Host, Port, [{active, false}, {nodelay, true}, {packet, 4}, binary]),
+    ?assertEqual(ok, gen_tcp:send(Socket, term_to_binary({load_query, {EventDefStr, [], [], []}}))),
+    Result = gen_tcp:recv(Socket, 0),
+    ?assertMatch({ok, _}, Result),
+    QueryPid = binary_to_term(element(2, Result)).
 
 
+
+load_query_and_event() ->
+    EventDefStr = "define event11 as (attr1, attr2, attr3, attr4);",
+    Query = "define correlation1 as
+                                select sum(ev1.attr1)
+                                from event11 as ev1
+                                within 60 seconds; ",
+    {ok, {Host, Port}} = application:get_env(rivus_cep, rivus_tcp_serv),
+    {ok, Socket} = gen_tcp:connect(Host, Port, [{active, false}, {nodelay, true}, {packet, 4}, binary]),
+    ok = gen_tcp:send(Socket, term_to_binary({load_query, {EventDefStr, [benchmark_event], [], []}})),
+    ?assertMatch({ok, _}, gen_tcp:recv(Socket, 0)),
+
+
+    ok = gen_tcp:send(Socket, term_to_binary({load_query, {Query, [benchmark_test], [], []}})),
+
+    ?assertMatch({ok, _}, gen_tcp:recv(Socket, 0)).
+
+%% {ok, {Host, Port}} = application:get_env(rivus_cep, rivus_tcp_serv).
+%% {ok, Socket} = gen_tcp:connect(Host, Port, [{active, false}, {nodelay, true}, {packet, 4}, binary]).
+%%
+%%
+%% Event1 = {event11, 10,b,c}.
+%% Event2 = {event11, 15,bbb,c}.
+%% Event3 = {event11, 20,b,c}.
+%% Event4 = {event11, 30,b,cc,d}.
+%% Event5 = {event11, 40,bb,cc,dd}.
+%%
+%% rivus_cep:notify(test1, Event1).
+%% rivus_cep:notify(test1, Event2).
+%% rivus_cep:notify(test1, Event3).
+%% rivus_cep:notify(test1, Event4).
+%% rivus_cep:notify(test1, Event5).
+%%
+%%
+%% {ok,Pid} = result_subscriber:start_link().
+%% EventDefStr = "define event11 as (attr1, attr2, attr3, attr4);".
+%% QueryStr = "define correlation1 as
+%%                      select sum(ev1.attr1)
+%%                      from event11 as ev1
+%%                      within 60 seconds; ".
+%% ok = rivus_cep:execute(EventDefStr).
+%% {ok, QueryPid, _} = rivus_cep:execute(QueryStr, [test1], [Pid], []).
+%%
+%%
+%%
+%% gen_tcp:send(Socket, term_to_binary({event, test1, Event1})).
+%% gen_tcp:send(Socket, term_to_binary({event, test1, Event2})).
+%% gen_tcp:send(Socket, term_to_binary({event, test1, Event3})).
+%% gen_tcp:send(Socket, term_to_binary({event, test1, Event4})).
+%% gen_tcp:send(Socket, term_to_binary({event, test1, Event5})).
