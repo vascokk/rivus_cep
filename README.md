@@ -200,6 +200,10 @@ Currently only Erlang clients are supported, but events serialization using [BER
 For memory efficiency, `{shared_streams, true}` can be provided in the options list. In this case, the query will work with a shared event sliding window. The window's size will be equal of the maximum "within" clause of all sharing queries.
 Queries based on event pattern use only non-shared windows.
 
+#Benchmarking
+
+You can load-test your queries using [Basho Bench](https://github.com/basho/basho_bench). Use the Basho Bench driver `basho_bench_driver_rivus.erl` and configuration file `rivus.config` provided in the `/priv` directory. Edit `rivus.config` according to your needs.
+
 
 ###Dependencies
 
