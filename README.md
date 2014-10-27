@@ -255,7 +255,7 @@ You can load-test your queries using [Basho Bench](https://github.com/basho/bash
 
 #Disclaimer
 
-This is not a production ready project. You can use it on your own risk 
+This is not a production ready project. You can use it on your own risk. 
 
 
 
