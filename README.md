@@ -91,31 +91,73 @@ The following aggregation functions are currently supported:
 
 Here is how to use Rivus:
 
-``` erlang
-application:start(rivus_cep).
+Clone and build:
 
-QueryStr = "define query1 as
-                  select ev1.eventparam1, ev2.eventparam2, sum(ev2.eventparam3) 
-                  from event1 as ev1, event2 as ev2
-                   where ev1.eventparam2 = ev2.eventparam2
-                    within 60 seconds; ".
+``` bash
+$ git clone https://github.com/vascokk/rivus_cep.git
+$ ./rebar get-deps
+$ ./rebar compile
+
+```
+
+Update `rel/vars.config` according to your preferences or use the default values. 
+
+Create a release using `relx`:
+
+``` sh
+$ ./relx
+
+```
+
+Start the application:
+
+``` sh
+$ ./_rel/rivus_cep/bin/rivus_cep console
+
+```
+
+Try the following in the Erlang console:
+
+``` erlang
+
+%% define the events to be recognised by the engine:
+EventDefStr1 = "define event1 as (eventparam1, eventparam2, eventparam3);".
+EventDefStr2 = "define event2 as (eventparam1, eventparam2, eventparam3);".
+
+rivus_cep:execute(EventDefStr1).
+rivus_cep:execute(EventDefStr2).
+
+% deploy the query
+QueryStr = "define correlation1 as
+                     select ev1.eventparam1, ev2.eventparam2, ev2.eventparam3, ev1.eventparam2
+                     from event1 as ev1, event2 as ev2
+                     where ev1.eventparam2 = ev2.eventparam2
+                     within 60 seconds; ".
 
 Producer = event_producer_1.
 {ok, SubscriberPid} = result_subscriber:start_link().
 
-{ok, QueryPid} = rivus_cep:execute(QueryStr, [Producer], [SubscriberPid], [{shared_streams, true}]).
+{ok, QueryPid, QueryDetails} = rivus_cep:execute(QueryStr, [Producer], [SubscriberPid], [{shared_streams, true}]).
     
 %% create some evetnts
-Event1 = {event1, gr1,b,10}.
-Event2 = {event2, gr2,bbb,20}.
+Event1 = {event1, 10, b, c}.
+Event2 = {event1, 15, bbb, c}.
+Event3 = {event1, 20, b, c}.
+Event4 = {event2, 30, b, cc}.
+Event5 = {event2, 40, bb, cc}.
 
-%% send the events
+%% send the events (if you do not care about the producers, you can use notify/1)
 rivus_cep:notify(Producer, Event1).
 rivus_cep:notify(Producer, Event2).
+rivus_cep:notify(Producer, Event3).
+rivus_cep:notify(Producer, Event4).
+rivus_cep:notify(Producer, Event5).
 
-%% or if you don't care about the producers
-rivus_cep:notify(Event1).
-rivus_cep:notify(Event2).
+%% result
+%% you should get:
+%% {ok,[{10,b,cc,b},{20,b,cc,b}]} 
+
+gen_server:call(SubscriberPid, get_result).
 	
 ```
 
@@ -139,7 +181,7 @@ You can define events in runtime, using the following statement with `rivus_cep:
 define <name> as (<attribute 1>, <attribute 2>,.....,<attribute N>);
 ```
 
-Here is an example:
+Here is an example (you can find it in the eunit suites):
 
 ``` erlang
   {ok,Pid} = result_subscriber:start_link(),

@@ -11,7 +11,7 @@
 		  lager
                  ]},
   {mod, { rivus_cep_app, []}},
-  {env, [{rivus_tcp_serv, {"127.0.0.1", 5775}}]}
+  {env, []}
  ]}.
 
  
