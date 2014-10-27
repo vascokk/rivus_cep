@@ -45,7 +45,7 @@ where
 within 60 seconds
 ```
 
-Here the result will be generated only in case when `event2` stricltly follows `event1` within a 60 seconds window. Pattern-based queries always persist the events. Pattern matching mechanism based on a directed graph FMS, using the `digraph` module.
+Here the result will be generated only in case when `event2` strictly follows `event1` within a 60 seconds window. Pattern-based queries always persist the events. Pattern matching mechanism is based on a directed graph FSM, using the `digraph` module.
 
 #Windows
 
