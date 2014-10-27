@@ -247,9 +247,15 @@ Queries based on event pattern use only non-shared windows.
 You can load-test your queries using [Basho Bench](https://github.com/basho/basho_bench). Use the Basho Bench driver `basho_bench_driver_rivus.erl` and configuration file `rivus.config` provided in the `/priv` directory. Edit `rivus.config` according to your needs.
 
 
-###Dependencies
+#Dependencies
 
 - [gproc](https://github.com/uwiger/gproc)
 - [folsom](https://github.com/boundary/folsom)
 - [lager](https://github.com/basho/lager) 
+
+#Disclaimer
+
+This is not a production ready project. You can use it on your own risk 
+
+
 
