@@ -73,25 +73,25 @@ eval_node(Stmt, Node, Key, ResultRecord, State) ->
     end.
 
 eval_aggregation(sum, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = AggrNodes} = State) ->
-    NewAggrNodes = orddict:update_counter({Stmt, Key, AggrNo}, Value,  AggrNodes),
-    {orddict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}};
+    NewAggrNodes = dict:update_counter({Stmt, Key, AggrNo}, Value,  AggrNodes),
+    {dict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}};
 eval_aggregation(count, Stmt, _, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = Aggregations} = State) ->
-    NewAggr = orddict:update_counter({Stmt, Key, AggrNo}, 1,  Aggregations),
-    {orddict:fetch({Stmt, Key, AggrNo}, NewAggr),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggr}};
+    NewAggr = dict:update_counter({Stmt, Key, AggrNo}, 1,  Aggregations),
+    {dict:fetch({Stmt, Key, AggrNo}, NewAggr),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggr}};
 eval_aggregation(min, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = AggrNodes} = State) ->
-    NewAggrNodes = orddict:update({Stmt, Key, AggrNo}, fun(Old) -> case Old < Value of
+    NewAggrNodes = dict:update({Stmt, Key, AggrNo}, fun(Old) -> case Old < Value of
 								       true -> Old;
 								       false -> Value
 								   end
 						       end, Value,  AggrNodes),
-    {orddict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}};
+    {dict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}};
 eval_aggregation(max, Stmt, Value, Key, #res_eval_state{aggrno = AggrNo, aggr_nodes = AggrNodes} = State) ->
-    NewAggrNodes = orddict:update({Stmt, Key, AggrNo}, fun(Old) -> case Old > Value of
+    NewAggrNodes = dict:update({Stmt, Key, AggrNo}, fun(Old) -> case Old > Value of
 								       true -> Old;
 								       false -> Value
 								   end
 						       end, Value,  AggrNodes),
-    {orddict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}}.
+    {dict:fetch({Stmt, Key, AggrNo}, NewAggrNodes),  State#res_eval_state{aggrno = AggrNo+1, aggr_nodes = NewAggrNodes}}.
 
 get_group_key(Event, SelectClause) when is_tuple(Event)->
     Keys = lists:foldl(fun({EventName, EventParam}, Acc) when is_atom(EventName) andalso is_atom(EventParam) -> 		    

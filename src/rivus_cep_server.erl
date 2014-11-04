@@ -62,7 +62,6 @@ wait_for_socket(Other, State) ->
 
 %% Notification event coming from client
 wait_for_data({data, Packet}, #state{socket=Socket} = State) ->
-
   process_packet(Packet, Socket),
   {next_state, wait_for_data, State, ?TIMEOUT};
 wait_for_data(timeout, State) ->
@@ -100,8 +99,8 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%--------------------------------------------------------------------
 process_packet(Packet, Socket) ->
   case decode_packet(Packet) of
-    {event, Event} -> process_event(Event);
-    {event, Provider, Event} -> process_event(Provider, Event);
+    {event, Event} -> process_event(Event, Socket);
+    {event, Provider, Event} -> process_event(Provider, Event, Socket);
     {load_query, Query} -> load_query(Query, Socket);
     P -> lager:error("Cannot decode packet ~p", [P])
   end.
@@ -111,21 +110,26 @@ decode_packet(Packet) ->
   lager:debug("Got term: ~p",[Term]),
   Term.
 
-process_event(Event) ->
+process_event(Event, Socket) ->
   lager:debug("-----> Sending event to CEP: ~p",[Event]),
-  rivus_cep:notify(Event).
+  rivus_cep:notify_sync(Event),
+  send_resp(ok, Socket).
 
-process_event(Provider, Event) ->
+process_event(Provider, Event, Socket) ->
   lager:debug("-----> Sending event to CEP: ~p",[Event]),
-  rivus_cep:notify(Provider, Event).
+  rivus_cep:notify_sync(Provider, Event),
+  send_resp(ok, Socket).
+
+send_resp(Resp, Socket) ->
+    ok = gen_tcp:send(Socket, term_to_binary(Resp)).
 
 load_query(Query, Socket) ->
   {QueryStr, Providers, UpdateListners, Options} = Query,
 
   case rivus_cep:execute(QueryStr, Providers, UpdateListners, Options) of
       {ok, QueryPid, _} -> ok = gen_tcp:send(Socket, term_to_binary(QueryPid));
-      ok -> ok = gen_tcp:send(Socket, term_to_binary(ok));
+      ok -> send_resp(ok, Socket);
       _ -> lager:error("Cannot execute statement:: ~p",[Query]),
-          ok = gen_tcp:send(Socket, term_to_binary({error,cannot_execute_query}))
+          send_resp({error, "Cannot execute statement:: ~p"}, Socket)
   end.
 

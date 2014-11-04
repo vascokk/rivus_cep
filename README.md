@@ -86,6 +86,18 @@ The following aggregation functions are currently supported:
 - count
 - min
 - max
+
+#Events representation
+
+Events are tuples in the format: `{<name>, <attribute 1>, <attribute 2>,.....,<attribute N>}`. The `<name>` must be unique.
+For each event type there must be a module implementing the `event_behavior` with the same name as the name of the event. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
+You can define events in runtime, using the following statement with `rivus_cep:execute/1`:
+
+```
+define <name> as (<attribute 1>, <attribute 2>,.....,<attribute N>);
+```
+
+See the following example in "Usage".
  
 #Usage
 
@@ -171,47 +183,6 @@ For each query there must be at least one Subscriber to receive the query result
 
 See `tests/rivus_cep_tests.erl` for more examples. 
 
-#Events representation
-
-Events are tuples in the format: `{<name>, <attribute 1>, <attribute 2>,.....,<attribute N>}`. The `<name>` must be unique.
-For each event type there must be a module implementing the `event_behavior` with the same name as the name of the event. The important function that needs to be implemented is - `get_param_by_name(Event, ParamName)`.
-You can define events in runtime, using the following statement with `rivus_cep:execute/1`:
-
-```
-define <name> as (<attribute 1>, <attribute 2>,.....,<attribute N>);
-```
-
-Here is an example (you can find it in the eunit suites):
-
-``` erlang
-  {ok,Pid} = result_subscriber:start_link(),
-
-  EventDefStr = "define event11 as (attr1, attr2, attr3, attr4);",
-  QueryStr = "define query1 as
-                     select sum(ev1.attr1)
-                     from event11 as ev1
-                     within 60 seconds; ",
-
-  ok = rivus_cep:execute(EventDefStr),
-
-  {ok, QueryPid, _} = rivus_cep:execute(QueryStr, [test_query_1], [Pid], []),
-
-  Event1 = {event11, 10,b,c},
-  Event2 = {event11, 15,bbb,c},
-  Event3 = {event11, 20,b,c},
-  Event4 = {event11, 30,b,cc,d},
-  Event5 = {event11, 40,bb,cc,dd},
-
-  rivus_cep:notify(test_query_1, Event1),
-  rivus_cep:notify(test_query_1, Event2),
-  rivus_cep:notify(test_query_1, Event3),
-  rivus_cep:notify(test_query_1, Event4),
-  rivus_cep:notify(test_query_1, Event5),
-
-  timer:sleep(2000),
-
-  {ok,Values} = gen_server:call(Pid, get_result)
-```
 
 #Streaming events via TCP
 

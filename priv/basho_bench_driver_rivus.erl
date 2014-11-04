@@ -52,13 +52,14 @@ send_event(Event, #state{socket = Socket} = State) ->
 create_event(_KeyGen, ValueGen) ->
     ValueGen.
 
-run(notify, KeyGen, ValueGen, State) ->
+run(notify, KeyGen, ValueGen, #state{socket = Socket} = State) ->
     Event = create_event(KeyGen, ValueGen),
     % Send message
     case send_event(Event, State) of
         {error, E} ->
             {error, E, State};
-        ok ->
-            {ok, State};
-        {ok, State} -> {ok, State}
+        {ok, State} -> case gen_tcp:recv(Socket,0) of
+                              {ok, _} -> {ok, State};
+                           {error, E} -> {error, E, State}
+                       end
     end.
