@@ -30,7 +30,7 @@ new(Id) ->
 %%         socket = Socket}}.
 
 connect() ->
-    {Host, Port} = basho_bench_config:get(rivus_cep_tcp_serv, {"127.0.0.1", 5775}),
+    {Host, Port} = basho_bench_config:get(rivus_cep_tcp_serv),
     {ok, Socket} = gen_tcp:connect(Host, Port, [{active, false}, {nodelay, true}, {packet, 4}, binary]),
     {Host, Port, Socket}.
 
