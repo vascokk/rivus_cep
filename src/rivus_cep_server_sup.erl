@@ -18,6 +18,8 @@
 -export([start_link/0, init/1, stop/1]).
 -export([start_socket/0]).
 
+-compile([{parse_transform, lager_transform}]).
+
 start_socket() ->
   supervisor:start_child(?MODULE, []).
 
@@ -27,8 +29,9 @@ start_link() ->
 stop(_S) -> ok.
 
 init([]) ->
+  lager:debug("-----> rivus_cep_server_sup, Args:  ~p~n",[]),
   {ok,
     {{simple_one_for_one, 10, 10},
-      [{undefined,
+      [{rivus_cep_server,
         {rivus_cep_server, start_link, []},
         temporary, brutal_kill, worker, [rivus_cep_server]}]}}.

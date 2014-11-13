@@ -19,19 +19,24 @@
 -compile([{parse_transform, lager_transform}]).
 
 %% API
--export([start_link/1,
-  execute/1,
-  execute/4,
-  load_query/4,
-  notify/1,
-  notify/2,
-  notify_sync/1,
-  notify_sync/2,
-  get_query_details/4]).
+-export([start_link/0,
+    start_link/1,
+    execute/1,
+    execute/2,
+    execute/4,
+    execute/5,
+    load_query/4,
+    notify/1,
+    notify/2,
+    notify/3,
+    notify_sync/1,
+    notify_sync/2,
+    notify_sync/3,
+    get_query_details/4]).
 
 %% gen_server API
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-  terminate/2, code_change/3]).
+    terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 
@@ -39,133 +44,135 @@
 -include_lib("folsom/include/folsom.hrl").
 
 -record(state, {query_sup,
-  clock_sup,
-  win_register = dict:new()}).
+    clock_sup,
+    win_register = dict:new()}
+).
 
 %%--------------------------------------------------------------------
 %% API functions
 %%--------------------------------------------------------------------
-start_link(Supervisor) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [Supervisor], []).
+start_link() ->
+    SrvId = erlang:phash2({node(), now()}),
+    gen_server:start_link({local, list_to_atom(integer_to_list(SrvId))}, ?MODULE, [], []).
+
+start_link(standalone) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 load_query(QueryStr, Producers, Subscribers, Options) ->
-  gen_server:call(?SERVER, {load_query, [QueryStr, Producers, Subscribers, Options]}).
+    gen_server:call(?SERVER, {load_query, [QueryStr, Producers, Subscribers, Options]}).
 
 execute(QueryStr) ->
-  gen_server:call(?SERVER, {execute, [QueryStr, [], [], []]}).
+    gen_server:call(?SERVER, {execute, [QueryStr, [], [], []]}).
+
+execute(Pid, QueryStr) ->
+    gen_server:call(Pid, {execute, [QueryStr, [], [], []]}).
 
 execute(QueryStr, Producers, Subscribers, Options) ->
-  gen_server:call(?SERVER, {execute, [QueryStr, Producers, Subscribers, Options]}).
+    gen_server:call(?SERVER, {execute, [QueryStr, Producers, Subscribers, Options]}).
+
+execute(Pid, QueryStr, Producers, Subscribers, Options) ->
+    gen_server:call(Pid, {execute, [QueryStr, Producers, Subscribers, Options]}).
 
 get_query_details(QueryStr, Producers, Subscribers, Options) ->
-  gen_server:call(?SERVER, {get_query_details, [QueryStr, Producers, Subscribers, Options]}).
+    gen_server:call(?SERVER, {get_query_details, [QueryStr, Producers, Subscribers, Options]}).
 
 notify(Event) ->
-  notify(any, Event).
+    notify(any, Event).
 
+notify(Pid, Event) when is_pid(Pid) ->
+    notify(Pid, any, Event);
 notify(Producer, Event) ->
-  gen_server:cast(?SERVER, {notify, Producer, Event}).
+    gen_server:cast(?SERVER, {notify, Producer, Event}).
+
+notify(Pid, Producer, Event) ->
+    gen_server:cast(Pid, {notify, Producer, Event}).
+
+
 
 notify_sync(Event) ->
-  notify_sync(any, Event).
+    notify_sync(any, Event).
 
+notify_sync(Pid, Event) when is_pid(Pid) ->
+    notify_sync(Pid, any, Event);
 notify_sync(Producer, Event) ->
-  gen_server:call(?SERVER, {notify, Producer, Event}).
+    gen_server:call(?SERVER, {notify, Producer, Event}).
+
+notify_sync(Pid, Producer, Event) ->
+    gen_server:call(Pid, {notify, Producer, Event}).
 
 
-init([Supervisor]) ->
-  QuerySupSpec = {query_worker_sup,
-    {rivus_cep_query_worker_sup, start_link, []},
-    permanent,
-    10000,
-    supervisor,
-    [rivus_cep_query_worker_sup]},
-  BatchClockSupSpec = {batch_clock_sup,
-    {rivus_cep_clock_sup, start_link, []},
-    permanent,
-    10000,
-    supervisor,
-    [rivus_cep_clock_sup]},
-  self() ! {start_query_supervisor, Supervisor, QuerySupSpec},
-  self() ! {start_batch_clock_supervisor, Supervisor, BatchClockSupSpec},
-  lager:info("--- Rivus CEP server started"),
-  {ok, #state{}}.
+init([]) ->
+    {ok, QuerySup} = rivus_cep_app_srv:get_query_sup(),
+    {ok, ClockSup} = rivus_cep_app_srv:get_clock_sup(),
+    {ok, #state{query_sup = QuerySup, clock_sup = ClockSup}}.
 
 
 %%--------------------------------------------------------------------
 %% gen_server functions
 %%--------------------------------------------------------------------
 handle_cast({notify, Producer, Event}, #state{win_register = WinReg} = State) ->
-  EventName = element(1, Event),
-  gproc:send({p, l, {Producer, EventName}}, Event),
-  case dict:is_key(EventName, WinReg) of
-    true -> Window = dict:fetch(EventName, WinReg),
-      lager:debug("Updating global window: ~p~n", [Window]),
-      rivus_cep_window:update(Window, Event),
-      gproc:send({p, l, {Producer, EventName, global}}, Event);
-    false -> ok
-  end,
-  {noreply, State};
+    EventName = element(1, Event),
+    gproc:send({p, l, {Producer, EventName}}, Event),
+    case dict:is_key(EventName, WinReg) of
+        true -> Window = dict:fetch(EventName, WinReg),
+            lager:debug("Updating global window: ~p~n", [Window]),
+            rivus_cep_window:update(Window, Event),
+            gproc:send({p, l, {Producer, EventName, global}}, Event);
+        false -> ok
+    end,
+    {noreply, State};
 handle_cast(_Msg, State) ->
-  {noreply, State}.
+    {noreply, State}.
 
 
 handle_call({load_query, [QueryStr, _Producers, Subscribers, Options]}, _From, State) ->
 
-  WinReg = State#state.win_register,
-  QuerySup = State#state.query_sup,
+    WinReg = State#state.win_register,
+    QuerySup = State#state.query_sup,
 
-  QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
+    QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
 
-  lager:debug("Query sup, Args: ~p~n", [QueryDetails]),
+    lager:debug("Query sup, Args: ~p~n", [QueryDetails]),
 
-  {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
-  {reply, {ok, Pid, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}};
+    {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
+    {reply, {ok, Pid, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}};
 handle_call({execute, [QueryStr, _Producers, Subscribers, Options]}, _From, State) ->
 
-  WinReg = State#state.win_register,
-  QuerySup = State#state.query_sup,
+    WinReg = State#state.win_register,
+    QuerySup = State#state.query_sup,
 
-  QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
+    QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
 
-  case QueryDetails of
-    {module, _} -> {reply, ok, State};
-    _ -> lager:info("Query sup, Args: ~p~n", [QueryDetails]),
-         {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
-         {reply, {ok, Pid, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}}
-  end;
+    case QueryDetails of
+        {module, _} -> {reply, ok, State};
+        _ -> lager:info("Query sup, Args: ~p~n", [QueryDetails]),
+            {ok, Pid} = supervisor:start_child(QuerySup, [QueryDetails]),
+            {reply, {ok, Pid, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}}
+    end;
 handle_call({get_query_details, [QueryStr, _Producers, Subscribers, Options]}, _From, #state{win_register = WinReg} = State) ->
-  QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
-  {reply, {ok, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}};
+    QueryDetails = get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg),
+    {reply, {ok, QueryDetails}, State#state{win_register = QueryDetails#query_details.window_register}};
 handle_call({notify, Producer, Event}, _From, #state{win_register = WinReg} = State) ->
-  EventName = element(1, Event),
-  gproc:send({p, l, {Producer, EventName}}, Event),
-  case dict:is_key(EventName, WinReg) of
-    true -> Window = dict:fetch(EventName, WinReg),
-      rivus_cep_window:update(Window, Event),
-      gproc:send({p, l, {Producer, EventName, global}}, Event);
-    false -> ok
-  end,
-  {reply, ok, State};
+    EventName = element(1, Event),
+    gproc:send({p, l, {Producer, EventName}}, Event),
+    case dict:is_key(EventName, WinReg) of
+        true -> Window = dict:fetch(EventName, WinReg),
+            rivus_cep_window:update(Window, Event),
+            gproc:send({p, l, {Producer, EventName, global}}, Event);
+        false -> ok
+    end,
+    {reply, ok, State};
 handle_call(_Msg, _From, State) ->
-  {reply, not_handled, State}.
+    {reply, not_handled, State}.
 
-handle_info({start_query_supervisor, Supervisor, QuerySupSpec}, State) ->
-  {ok, Pid} = supervisor:start_child(Supervisor, QuerySupSpec),
-  link(Pid),
-  {noreply, State#state{query_sup = Pid}};
-handle_info({start_batch_clock_supervisor, Supervisor, BatchClockSupSpec}, State) ->
-  {ok, Pid} = supervisor:start_child(Supervisor, BatchClockSupSpec),
-  link(Pid),
-  {noreply, State#state{clock_sup = Pid}};
 handle_info(_Info, State) ->
-  {noreply, State}.
+    {noreply, State}.
 
 terminate(_Reason, _State) ->
-  ok.
+    ok.
 
 code_change(_OldVsn, State, _Extra) ->
-  {ok, State}.
+    {ok, State}.
 
 %%--------------------------------------------------------------------
 %% Internal functions
@@ -196,54 +203,54 @@ get_query_details([QueryStr, _Producers, Subscribers, Options], WinReg) ->
     end.
 
 parse_query(QueryStr) ->
-  {ok, Tokens, _} = rivus_cep_scanner:string(QueryStr, 1),
-  {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),
-  QueryClauses.
+    {ok, Tokens, _} = rivus_cep_scanner:string(QueryStr, 1),
+    {ok, QueryClauses} = rivus_cep_parser:parse(Tokens),
+    QueryClauses.
 
 register_windows([_StmtName, _SelectClause, FromClause, _WhereClause, WithinClause, {_Filters}], Options, WinReg) ->
-  Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets), %%TODO: to be passed as parameter to the func
-  %%{ok, EvWinPid} = rivus_cep_window:start_link(Mod),
+    Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets), %%TODO: to be passed as parameter to the func
+    %%{ok, EvWinPid} = rivus_cep_window:start_link(Mod),
 
-  {QueryType, Events} = case FromClause of
-                          {pattern, {List}} -> {pattern, List};
-                          {List} -> {simple, List}
-                        end,
-  SharedStreams = proplists:get_value(shared_streams, Options, false),
-  case {QueryType, SharedStreams} of
-    {pattern, _} -> {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
-      {ok, FsmWinPid} = rivus_cep_window:start_link(Mod),
-      {{register_local_window(WithinClause, EvWinPid), EvWinPid},
-        {register_local_window(WithinClause, FsmWinPid), FsmWinPid},
-        WinReg};
-    {simple, true} -> {{global, nil}, {nil, nil}, register_global_windows(Events, WithinClause, WinReg)};
-    _ -> {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
-      {{register_local_window(WithinClause, EvWinPid), EvWinPid}, {nil, nil}, WinReg}
-  end.
+    {QueryType, Events} = case FromClause of
+                              {pattern, {List}} -> {pattern, List};
+                              {List} -> {simple, List}
+                          end,
+    SharedStreams = proplists:get_value(shared_streams, Options, false),
+    case {QueryType, SharedStreams} of
+        {pattern, _} -> {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
+            {ok, FsmWinPid} = rivus_cep_window:start_link(Mod),
+            {{register_local_window(WithinClause, EvWinPid), EvWinPid},
+                {register_local_window(WithinClause, FsmWinPid), FsmWinPid},
+                WinReg};
+        {simple, true} -> {{global, nil}, {nil, nil}, register_global_windows(Events, WithinClause, WinReg)};
+        _ -> {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
+            {{register_local_window(WithinClause, EvWinPid), EvWinPid}, {nil, nil}, WinReg}
+    end.
 
 register_local_window({Within, _WindowsType}, Pid) ->
-  rivus_cep_window:new(Pid, slide, Within).
+    rivus_cep_window:new(Pid, slide, Within).
 
 register_global_windows(Events, WithinClause, WinReg) ->
-  NewWinReg = lists:foldl(fun(Event, Register) -> case dict:is_key(Event, Register) of
-                                                    true -> maybe_update_window_size(Event, Register, WithinClause);
-                                                    false -> create_new_global_window(Event, Register, WithinClause)
-                                                  end
-  end, WinReg, Events),
-  lager:debug("Windows Register: ~p~n", [NewWinReg]),
-  NewWinReg.
+    NewWinReg = lists:foldl(fun(Event, Register) -> case dict:is_key(Event, Register) of
+                                                        true -> maybe_update_window_size(Event, Register, WithinClause);
+                                                        false -> create_new_global_window(Event, Register, WithinClause)
+                                                    end
+    end, WinReg, Events),
+    lager:debug("Windows Register: ~p~n", [NewWinReg]),
+    NewWinReg.
 
 maybe_update_window_size(Event, WinReg, {Within, _WindowsType}) ->
-  Window = dict:fetch(Event, WinReg),
-  Size = Window#slide.window,
-  case Size < Within of
-    true -> NewWindow = rivus_cep_window:resize(Window, Within),
-      dict:store(Event, NewWindow, WinReg);
-    false -> WinReg
-  end.
+    Window = dict:fetch(Event, WinReg),
+    Size = Window#slide.window,
+    case Size < Within of
+        true -> NewWindow = rivus_cep_window:resize(Window, Within),
+            dict:store(Event, NewWindow, WinReg);
+        false -> WinReg
+    end.
 
 
 create_new_global_window(Event, WinReg, {Within, _WindowType}) ->
-  %% Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets), %%TODO: to be passed as parameter to the func
-  %% {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
-  Window = rivus_cep_window:new(slide, Within),
-  dict:store(Event, Window, WinReg).
+    %% Mod = application:get_env(rivus_cep, rivus_window_provider, rivus_cep_window_ets), %%TODO: to be passed as parameter to the func
+    %% {ok, EvWinPid} = rivus_cep_window:start_link(Mod),
+    Window = rivus_cep_window:new(slide, Within),
+    dict:store(Event, Window, WinReg).

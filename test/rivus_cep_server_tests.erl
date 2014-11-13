@@ -26,13 +26,13 @@ query_worker_test_() ->
         [
             {"Test query via TCP connection",
                 timeout, 60 * 60,
-                fun load_query_tcp/0},
+                 fun load_query_tcp/0},
             {"Test event module load via TCP connection",
                 timeout, 60 * 60,
                 fun load_event_tcp/0},
             {"Test query and event module load via TCP connection",
                 timeout, 60 * 60,
-                fun load_query_and_event/0}
+               fun load_query_and_event/0}
         ]
     }.
 

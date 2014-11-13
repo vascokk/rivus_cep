@@ -15,29 +15,28 @@
 %%------------------------------------------------------------------------------
 
 -module(rivus_cep_sup).
-
 -behaviour(supervisor).
+-compile([{parse_transform, lager_transform}]).
 
-
--export([start_link/0, stop/0]).
+-export([start_link/0]).
 
 -export([init/1]).
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+%%
+%% start_link() ->
+%%     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-init(_Args) ->
+start_link() ->
+    supervisor:start_link(?MODULE, []).
+
+init(Args) ->
+    lager:debug("rivus_cep_sup, Args:  ~p~n",[Args]),
     CepServ = { rivus_cep,
-                  {rivus_cep, start_link, [self()]},
-                  permanent, 5000, worker, [rivus_cep]},
+                  {rivus_cep, start_link, []},
+                  transient, brutal_kill, worker, [rivus_cep]},
 
     { ok,
-        { {one_for_one, 10, 3600},
+        { {simple_one_for_one, 5, 3600},
           [CepServ]}}.
 
-stop() ->
-    case whereis(rivus_cep_sup) of
-	P when is_pid(P) ->
-	    exit(P, normal);
-	_ -> ok
-    end.
+
