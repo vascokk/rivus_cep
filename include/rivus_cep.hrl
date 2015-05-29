@@ -17,8 +17,8 @@
 -record(res_eval_state, { stmt,
 			  recno = 1,
 			  aggrno = 1,
-			  aggr_nodes = dict:new(),
-			  result = dict:new()		  
+			  aggr_nodes = #{},
+			  result = #{}
 	 }).
 
 

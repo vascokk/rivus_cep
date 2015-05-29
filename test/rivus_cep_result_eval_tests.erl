@@ -1,4 +1,4 @@
--module(rivus_cep_aggregation_tests).
+-module(rivus_cep_result_eval_tests).
 -compile([debug_info, export_all]).
 -compile([{parse_transform, lager_transform}]).
 
@@ -16,8 +16,8 @@ group_key_1_test() ->
     SelectClause = [{event1,eventparam1},
 		     {event1,eventparam2},
 		     {sum,{event1,eventparam3}}],
-    Key1 = rivus_cep_aggregation:get_group_key({event1,gr1,b,30}, SelectClause),
-    Key2 = rivus_cep_aggregation:get_group_key({event1,gr3,b,40,d}, SelectClause),
+    Key1 = rivus_cep_result_eval:get_group_key({event1,gr1,b,30}, SelectClause),
+    Key2 = rivus_cep_result_eval:get_group_key({event1,gr3,b,40,d}, SelectClause),
 
     ?assertEqual([{gr1,b}],[Key1]),
     ?assertEqual([{gr3,b}],[Key2]).
@@ -34,8 +34,8 @@ group_key_2_test() ->
                {event1,eventparam2},
                {plus,{event1,eventparam3},{event1,eventparam4}},
                {sum,{event1,eventparam3}}],
-    Key1 = rivus_cep_aggregation:get_group_key({event1,gr1,b,30,10}, SelectClause),
-    Key2 = rivus_cep_aggregation:get_group_key({event1,gr3,b,40,10,d}, SelectClause),
+    Key1 = rivus_cep_result_eval:get_group_key({event1,gr1,b,30,10}, SelectClause),
+    Key2 = rivus_cep_result_eval:get_group_key({event1,gr3,b,40,10,d}, SelectClause),
 
     ?assertEqual([{gr1,b,40}],[Key1]),
     ?assertEqual([{gr3,b,50}],[Key2]).

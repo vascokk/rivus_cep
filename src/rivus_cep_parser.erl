@@ -166,7 +166,7 @@ find_event_name(FromTuples, ParamName) ->
                                       FromTuples)
               end,
     Event.
--file("/usr/local/lib/erlang/lib/parsetools-2.0.11/include/yeccpre.hrl", 0).
+-file("/usr/lib/erlang/lib/parsetools-2.0.12/include/yeccpre.hrl", 0).
 %%
 %% %CopyrightBegin%
 %%

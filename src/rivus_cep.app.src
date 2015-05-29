@@ -7,8 +7,8 @@
   {applications, [
                   kernel,
                   stdlib,
-		  gproc,
-		  lager
+		              gproc,
+		              lager
                  ]},
   {mod, { rivus_cep_app, []}},
   {env, []}
