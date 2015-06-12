@@ -2,6 +2,8 @@
 
 # Overview
 
+[![Join the chat at https://gitter.im/vascokk/rivus_cep](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/vascokk/rivus_cep?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Rivus CEP is an Erlang application for Complex Event Processing. It uses a declarative SQL-like DSL to define operations over event streams.
 In the CEP-based systems the events(data) are processed as they arrive, as opposite to the DB, where data is first persisted, then fetched and processed:
 
