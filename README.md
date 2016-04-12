@@ -63,7 +63,7 @@ The underlying persistence mechanism is pluggable (see the `rivus_cep_window.erl
 
 ##Filters
 
-Filters are used to remove the events from the stream, based on certain criteria, so that to speed up the result generation and reduce the memory requirements:
+Filters are used to remove events from the stream, based on certain criteria, so that to speed up the result generation and reduce the memory requirements:
 
 ```
 select 
