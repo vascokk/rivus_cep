@@ -24,7 +24,6 @@
 
 
 init(QD) ->
-  fprof:trace(start, "/home/evaskol/work/rivus_cep/fprof1.log"),
   [{QueryName}, {SelectClause}, FromClause, {WhereClause}, WithinClause, {Filters}] = QD#query_details.clauses,
   {QueryType, Events} = case FromClause of
                           {pattern, {List}} -> {pattern, List};
