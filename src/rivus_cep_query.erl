@@ -184,7 +184,7 @@ where_eval({Op, Left, Right}, ResRecord) ->
     lt -> where_eval(Left, ResRecord) < where_eval(Right, ResRecord);
     lte -> where_eval(Left, ResRecord) =< where_eval(Right, ResRecord);
     gte -> where_eval(Left, ResRecord) >= where_eval(Right, ResRecord);
-    ne -> where_eval(Left, ResRecord) /= where_eval(Right, ResRecord);
+    neq -> where_eval(Left, ResRecord) /= where_eval(Right, ResRecord);
     plus -> where_eval(Left, ResRecord) + where_eval(Right, ResRecord);
     minus -> where_eval(Left, ResRecord) - where_eval(Right, ResRecord);
     mult -> where_eval(Left, ResRecord) * where_eval(Right, ResRecord);
