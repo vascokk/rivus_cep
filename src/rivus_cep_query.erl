@@ -306,7 +306,7 @@ process_event(Event, #query_state{query_type = QueryType, window = Window, windo
 process_event(Event, #query_state{query_type = QueryType} = State) when QueryType == pattern ->
   EventName = element(1, Event),
   lager:debug("rivus_cep_query:process_event, query_type: pattern, EventName: ~p,  Event: ~p", [EventName, Event]),
-  fprof:trace(start, "/home/evaskol/work/rivus_cep/fprof2.log"),
+
   case rivus_cep_query:apply_filters(Event, State#query_state.stream_filters) of
     true -> case is_initial_state(EventName, State) of
               false -> eval_fsm(EventName, Event, State);
